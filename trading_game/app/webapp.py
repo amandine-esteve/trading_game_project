@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import random
 
-#import streamlit as st
+
 
 # ----- PARAMETERS -----
 np.random.seed(42)
@@ -15,7 +15,6 @@ initial_cash = 100000
 mu = 0.0005
 sigma = 0.01
 news_prob = 0.15
-print("ok")
 
 # ----- SESSION STATE -----
 if "t" not in st.session_state:
@@ -32,7 +31,7 @@ def generate_news(t):
         polarity = random.choice(["positive", "negative"])
         impact = np.random.uniform(0.5, 2.0)
         return {"time": t, "polarity": polarity, "impact": impact,
-        "headline": f"{polarity.title()} news at t={t}"}
+                "headline": f"{polarity.title()} news at t={t}"}
     return None
 
 def simulate_price(prev_price, news):
@@ -42,7 +41,7 @@ def simulate_price(prev_price, news):
     if news:
         jump = (news["impact"]/100.0) * prev_price
         price += jump if news["polarity"] == "positive" else -jump
-        return max(price, 0.01)
+    return max(price, 0.01)
 
 # ----- UI -----
 st.title("📈 Asset Manager Trading Game")
@@ -55,20 +54,20 @@ if st.session_state.t < T:
 if news:
     st.warning(f"📰 News: {news['headline']} (impact {news['impact']:.2f}%)")
 
-st.write(f"**Time step:** {st.session_state.t}")
-st.write(f"**Current Price:** {new_price:.2f}")
-st.write(f"**Cash:** {st.session_state.cash:.2f}")
-st.write(f"**Position:** {st.session_state.position} shares")
-st.write(f"**Portfolio Value:** {st.session_state.cash + st.session_state.position * new_price:.2f}")
+    st.write(f"**Time step:** {st.session_state.t}")
+    st.write(f"**Current Price:** {new_price:.2f}")
+    st.write(f"**Cash:** {st.session_state.cash:.2f}")
+    st.write(f"**Position:** {st.session_state.position} shares")
+    st.write(f"**Portfolio Value:** {st.session_state.cash + st.session_state.position * new_price:.2f}")
 
 # Player actions
 col1, col2, col3 = st.columns(3)
 with col1:
     if st.button("BUY 10"):
         cost = 10 * new_price
-    if st.session_state.cash >= cost:
-        st.session_state.cash -= cost
-    st.session_state.position += 10
+        if st.session_state.cash >= cost:
+            st.session_state.cash -= cost
+            st.session_state.position += 10
 with col2:
     if st.button("SELL 10"):
         qty = min(10, st.session_state.position)
