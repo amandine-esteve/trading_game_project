@@ -1,7 +1,3 @@
-#cd /Users/victorchardain/Desktop/DAUPHINE/MSc_203/M2_203/S1/Python/Project/trading_game_project/trading_game/app
-#micromamba activate flow_master
-#streamlit run webapp_2.py
-
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -16,7 +12,7 @@ from streamlit_autorefresh import st_autorefresh
 st.set_page_config(
     page_title="Options Market Maker", 
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 # Custom CSS for dark theme
@@ -43,6 +39,20 @@ st.markdown("""
     }
     div[data-testid="stMetricValue"] {
         font-size: 28px;
+    }
+    .nav-link {
+        display: block;
+        padding: 10px;
+        margin: 5px 0;
+        background-color: #1e2130;
+        border-radius: 5px;
+        text-decoration: none;
+        color: white;
+        text-align: center;
+        transition: background-color 0.3s;
+    }
+    .nav-link:hover {
+        background-color: #2e3444;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -77,8 +87,9 @@ if 'trading_paused' not in st.session_state:
     st.session_state.trading_paused = False
 
 # Auto-refresh (AFTER initialization)
-if not st.session_state.trading_paused:
+if not st.session_state.trading_paused and not st.session_state.game_over:
     count = st_autorefresh(interval=1500, key="price_refresh")
+
 # ============================================================================
 # PRICING FUNCTIONS (Placeholders pour votre pricer)
 # ============================================================================
@@ -123,7 +134,7 @@ def get_bid_ask_spread(option_price, volatility=0.3):
     PLACEHOLDER - À remplacer par votre fonction de spread
     Retourne (bid, ask) basé sur le mid price
     """
-    spread = option_price * 0.02  # 2% spread de base
+    spread = option_price * 0.02
     bid = option_price - spread/2
     ask = option_price + spread/2
     return bid, ask
@@ -141,7 +152,7 @@ def simulate_price_movement(current_price, dt=1/252, mu=0.05, sigma=0.3):
 # ============================================================================
 def calculate_portfolio_greeks():
     """Calculate aggregated Greeks across all positions"""
-    total_delta = st.session_state.futures_position  # Futures delta
+    total_delta = st.session_state.futures_position
     total_gamma = 0
     total_vega = 0
     total_theta = 0
@@ -156,7 +167,7 @@ def calculate_portfolio_greeks():
             pos['type']
         )
         
-        multiplier = pos['quantity'] * 100 * pos['side']  # side: 1 for long, -1 for short
+        multiplier = pos['quantity'] * 100 * pos['side']
         total_delta += greeks['delta'] * multiplier
         total_gamma += greeks['gamma'] * multiplier
         total_vega += greeks['vega'] * multiplier
@@ -173,7 +184,6 @@ def calculate_total_portfolio_value():
     """Calculate total portfolio value"""
     total = st.session_state.cash
     
-    # Options value
     for pos in st.session_state.positions:
         option_price = black_scholes(
             st.session_state.current_price,
@@ -185,34 +195,23 @@ def calculate_total_portfolio_value():
         )
         total += option_price * pos['quantity'] * 100 * pos['side']
     
-    # Futures P&L (mark-to-market)
-    if 'futures_entry_price' in st.session_state:
+    if 'futures_entry_price' in st.session_state and st.session_state.futures_position != 0:
         futures_pnl = (st.session_state.current_price - st.session_state.futures_entry_price) * st.session_state.futures_position
         total += futures_pnl
     
     return total
 
 def calculate_risk_score():
-    """
-    Risk score basé sur:
-    - Delta exposure (plus c'est proche de 0, mieux c'est)
-    - Gamma (volatilité du delta)
-    - Drawdown
-    """
+    """Risk score based on delta, gamma, and P&L"""
     greeks = calculate_portfolio_greeks()
     portfolio_value = calculate_total_portfolio_value()
     
-    # Delta risk (normalized)
-    delta_risk = abs(greeks['delta']) / 1000  # Penalize delta far from 0
-    
-    # Gamma risk
+    delta_risk = abs(greeks['delta']) / 1000
     gamma_risk = abs(greeks['gamma']) / 100
     
-    # P&L component
     pnl = portfolio_value - st.session_state.starting_cash
     pnl_score = max(0, pnl / st.session_state.starting_cash * 100)
     
-    # Final score (0-100)
     score = max(0, 100 - delta_risk * 30 - gamma_risk * 20 + pnl_score * 50)
     
     return min(100, score)
@@ -221,7 +220,6 @@ def calculate_risk_score():
 # UPDATE PRICE
 # ============================================================================
 if not st.session_state.trading_paused and not st.session_state.game_over:
-    # Check if game is over
     if st.session_state.tick_count >= st.session_state.game_duration:
         st.session_state.game_over = True
     else:
@@ -230,21 +228,50 @@ if not st.session_state.trading_paused and not st.session_state.game_over:
         st.session_state.time_history.append(datetime.now())
         st.session_state.tick_count += 1
         
-        # Track P&L history
         total_pnl = calculate_total_portfolio_value() - st.session_state.starting_cash
         st.session_state.pnl_history.append(total_pnl)
         
-        # Update time to expiry for all positions
         for pos in st.session_state.positions:
             time_remaining = (pos['expiry_date'] - datetime.now()).total_seconds() / (365 * 24 * 3600)
             pos['time_to_expiry'] = max(0, time_remaining)
 
 # ============================================================================
-# HEADER - KPIs
+# SIDEBAR NAVIGATION
+# ============================================================================
+with st.sidebar:
+    st.title("🧭 Navigation")
+    st.markdown("---")
+    
+    st.markdown("""
+    <a href="#market-overview" class="nav-link">📊 Market Overview</a>
+    <a href="#risk-dashboard" class="nav-link">⚠️ Risk Dashboard</a>
+    <a href="#positions" class="nav-link">📈 Positions</a>
+    <a href="#hedging" class="nav-link">🛡️ Delta Hedging</a>
+    <a href="#clients" class="nav-link">📞 Client Requests</a>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    st.markdown("### ⚙️ Settings")
+    
+    new_duration = st.slider(
+        "Game Duration (ticks)", 
+        min_value=50, 
+        max_value=300, 
+        value=st.session_state.game_duration,
+        help="Adjust game length"
+    )
+    if new_duration != st.session_state.game_duration and st.session_state.tick_count == 0:
+        st.session_state.game_duration = new_duration
+    
+    st.caption(f"⏱️ Refresh: 1.5s")
+    st.caption(f"🎮 Status: {'PAUSED' if st.session_state.trading_paused else 'ACTIVE'}")
+    st.caption(f"🏁 Game: {'OVER' if st.session_state.game_over else 'IN PROGRESS'}")
+
+# ============================================================================
+# HEADER
 # ============================================================================
 st.title("🎯 Options Market Maker Dashboard")
 
-# Game Over Banner
 if st.session_state.game_over:
     final_pnl = calculate_total_portfolio_value() - st.session_state.starting_cash
     final_score = calculate_risk_score()
@@ -255,7 +282,6 @@ if st.session_state.game_over:
         st.error(f"💀 GAME OVER - Better luck next time! Final P&L: ${final_pnl:,.0f} | Score: {final_score:.0f}/100")
     st.divider()
 
-# Progress bar for game time
 progress_pct = st.session_state.tick_count / st.session_state.game_duration
 time_remaining = st.session_state.game_duration - st.session_state.tick_count
 
@@ -267,14 +293,15 @@ with col_progress2:
 
 st.divider()
 
-# Calculate metrics
+# ============================================================================
+# TOP METRICS
+# ============================================================================
 portfolio_value = calculate_total_portfolio_value()
 pnl = portfolio_value - st.session_state.starting_cash
 pnl_pct = (pnl / st.session_state.starting_cash) * 100
 risk_score = calculate_risk_score()
 portfolio_greeks = calculate_portfolio_greeks()
 
-# Top metrics
 col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
@@ -304,17 +331,17 @@ with col5:
 st.divider()
 
 # ============================================================================
-# MAIN LAYOUT - Chart + Risk Dashboard
+# MARKET OVERVIEW
 # ============================================================================
+st.markdown('<a id="market-overview"></a>', unsafe_allow_html=True)
+st.header("📊 Market Overview")
+
 chart_col, risk_col = st.columns([2, 1])
 
 with chart_col:
-    st.subheader("📈 Live Market Data")
+    st.subheader("📈 Live Stock Price")
     
-    # Price chart - Fixed X-axis with progressive drawing
     fig = go.Figure()
-    
-    # X-axis: fixed range from 0 to game_duration
     x_values = list(range(len(st.session_state.price_history)))
     
     fig.add_trace(go.Scatter(
@@ -327,7 +354,6 @@ with chart_col:
         fillcolor='rgba(0, 212, 255, 0.15)'
     ))
     
-    # Add a vertical line at current position
     if not st.session_state.game_over:
         fig.add_vline(
             x=st.session_state.tick_count, 
@@ -344,7 +370,7 @@ with chart_col:
             showgrid=True, 
             gridcolor='#2e3444',
             title="Time (ticks)",
-            range=[0, st.session_state.game_duration],  # FIXED RANGE
+            range=[0, st.session_state.game_duration],
             zeroline=True,
             zerolinecolor='#2e3444'
         ),
@@ -360,7 +386,8 @@ with chart_col:
     )
     st.plotly_chart(fig, use_container_width=True)
     
-    # P&L chart - Fixed X-axis with progressive drawing
+    st.subheader("💰 P&L Evolution")
+    
     fig_pnl = go.Figure()
     
     fig_pnl.add_trace(go.Scatter(
@@ -373,7 +400,6 @@ with chart_col:
         fillcolor=f'rgba(0, 255, 136, 0.15)' if pnl > 0 else 'rgba(255, 68, 68, 0.15)'
     ))
     
-    # Add vertical line at current position
     if not st.session_state.game_over:
         fig_pnl.add_vline(
             x=st.session_state.tick_count, 
@@ -390,7 +416,7 @@ with chart_col:
             showgrid=True, 
             gridcolor='#2e3444',
             title="Time (ticks)",
-            range=[0, st.session_state.game_duration],  # FIXED RANGE
+            range=[0, st.session_state.game_duration],
             zeroline=True,
             zerolinecolor='#2e3444'
         ),
@@ -408,11 +434,10 @@ with chart_col:
     st.plotly_chart(fig_pnl, use_container_width=True)
 
 with risk_col:
+    st.markdown('<a id="risk-dashboard"></a>', unsafe_allow_html=True)
     st.subheader("⚠️ Risk Dashboard")
     
-    # Greeks display
     def get_risk_color(value, thresholds):
-        """Return color based on risk thresholds"""
         abs_val = abs(value)
         if abs_val < thresholds[0]:
             return "#00ff88"
@@ -423,28 +448,23 @@ with risk_col:
     
     st.markdown("### Portfolio Greeks")
     
-    # Delta
     delta_color = get_risk_color(portfolio_greeks['delta'], [500, 1500])
     st.markdown(f"**Delta:** <span style='color:{delta_color}; font-size:24px'>{portfolio_greeks['delta']:.0f}</span>", unsafe_allow_html=True)
     st.progress(min(1.0, abs(portfolio_greeks['delta']) / 2000))
     
-    # Gamma
     gamma_color = get_risk_color(portfolio_greeks['gamma'], [50, 150])
     st.markdown(f"**Gamma:** <span style='color:{gamma_color}; font-size:24px'>{portfolio_greeks['gamma']:.2f}</span>", unsafe_allow_html=True)
     st.progress(min(1.0, abs(portfolio_greeks['gamma']) / 200))
     
-    # Vega
     vega_color = get_risk_color(portfolio_greeks['vega'], [1000, 3000])
     st.markdown(f"**Vega:** <span style='color:{vega_color}; font-size:24px'>{portfolio_greeks['vega']:.0f}</span>", unsafe_allow_html=True)
     st.progress(min(1.0, abs(portfolio_greeks['vega']) / 5000))
     
-    # Theta
     theta_color = get_risk_color(portfolio_greeks['theta'], [50, 150])
     st.markdown(f"**Theta:** <span style='color:{theta_color}; font-size:24px'>{portfolio_greeks['theta']:.2f}</span>", unsafe_allow_html=True)
     
     st.divider()
     
-    # Risk warnings
     st.markdown("### Risk Alerts")
     if abs(portfolio_greeks['delta']) > 1500:
         st.error(f"⚠️ High Delta Exposure: {portfolio_greeks['delta']:.0f}")
@@ -458,7 +478,8 @@ st.divider()
 # ============================================================================
 # POSITIONS TABLE
 # ============================================================================
-st.subheader("📊 Current Positions")
+st.markdown('<a id="positions"></a>', unsafe_allow_html=True)
+st.header("📈 Current Positions")
 
 if st.session_state.positions:
     positions_data = []
@@ -501,7 +522,6 @@ if st.session_state.positions:
     df_positions = pd.DataFrame(positions_data)
     st.dataframe(df_positions, use_container_width=True, hide_index=True)
     
-    # Close position buttons
     close_col1, close_col2 = st.columns([3, 1])
     with close_col1:
         position_to_close = st.selectbox("Select position to close", [f"ID {p['ID']} - {p['Type']} {p['Strike']}" for p in positions_data])
@@ -525,7 +545,6 @@ if st.session_state.positions:
 else:
     st.info("No open positions")
 
-# Futures position
 st.markdown("### Futures Position")
 fut_col1, fut_col2, fut_col3 = st.columns(3)
 with fut_col1:
@@ -541,9 +560,10 @@ with fut_col3:
 st.divider()
 
 # ============================================================================
-# DELTA HEDGING SECTION
+# DELTA HEDGING
 # ============================================================================
-st.subheader("🛡️ Delta Hedging (Futures)")
+st.markdown('<a id="hedging"></a>', unsafe_allow_html=True)
+st.header("🛡️ Delta Hedging (Futures)")
 
 hedge_col1, hedge_col2, hedge_col3 = st.columns([2, 2, 1])
 
@@ -562,29 +582,24 @@ with hedge_col2:
         help="Positive = Long, Negative = Short"
     )
     
-    # Transaction cost
-    futures_cost = abs(futures_qty) * 0.5  # $0.5 per share
+    futures_cost = abs(futures_qty) * 0.5
     st.caption(f"Transaction cost: ${futures_cost:.2f}")
 
 with hedge_col3:
-    st.write("")  # Spacing
-    st.write("")  # Spacing
+    st.write("")
+    st.write("")
     if st.button("⚡ Execute Hedge", type="primary"):
         if st.session_state.cash >= futures_cost:
-            # Update futures position
             if st.session_state.futures_position == 0 or np.sign(futures_qty) == np.sign(st.session_state.futures_position):
-                # Opening or adding to position
                 total_position = st.session_state.futures_position + futures_qty
                 if st.session_state.futures_position == 0:
                     st.session_state.futures_entry_price = st.session_state.current_price
                 else:
-                    # Weighted average entry
                     old_notional = st.session_state.futures_position * st.session_state.futures_entry_price
                     new_notional = futures_qty * st.session_state.current_price
                     st.session_state.futures_entry_price = (old_notional + new_notional) / total_position
                 st.session_state.futures_position = total_position
             else:
-                # Reducing or closing position
                 st.session_state.futures_position += futures_qty
                 if st.session_state.futures_position == 0:
                     st.session_state.pop('futures_entry_price', None)
@@ -598,12 +613,12 @@ with hedge_col3:
 st.divider()
 
 # ============================================================================
-# CLIENT REQUESTS SECTION (PLACEHOLDER)
+# CLIENT REQUESTS
 # ============================================================================
-st.subheader("📞 Client Requests")
+st.markdown('<a id="clients"></a>', unsafe_allow_html=True)
+st.header("📞 Client Requests")
 st.info("🔌 **PLACEHOLDER** - Section pour brancher le code de génération des requests clients")
 
-# Example of how it could look
 with st.expander("💡 Example Interface"):
     req_col1, req_col2, req_col3 = st.columns(3)
     with req_col1:
@@ -624,6 +639,8 @@ st.divider()
 # ============================================================================
 # CONTROLS
 # ============================================================================
+st.header("🎮 Game Controls")
+
 control_col1, control_col2, control_col3 = st.columns(3)
 
 with control_col1:
@@ -647,10 +664,9 @@ with control_col2:
         st.rerun()
 
 with control_col3:
-    if st.button("📜 Trade History", use_container_width=True):
-        st.session_state['show_history'] = not st.session_state.get('show_history', False)
+    show_history = st.checkbox("📜 Show Trade History", value=False)
 
-if st.session_state.get('show_history', False):
+if show_history:
     with st.expander("📜 Trade History", expanded=True):
         if st.session_state.trade_history:
             df = pd.DataFrame(st.session_state.trade_history)
