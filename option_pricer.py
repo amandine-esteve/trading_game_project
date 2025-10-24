@@ -1,18 +1,23 @@
 import numpy as np
 from scipy.stats import norm
 from typing import Literal, List
+from pydantic import BaseModel, Field, validator
 
 # Vanilla Option Pricer using Black-Scholes Model
-class Option:
-    def __init__(self, S: float, K: float, T: float, r: float, sigma: float, 
-                 option_type: Literal['call', 'put'], position: int = 1):
-        self.S = S
-        self.K = K
-        self.T = T
-        self.r = r
-        self.sigma = sigma
-        self.option_type = option_type
-        self.position = position  # +1 pour long, -1 pour short
+class Option(BaseModel):
+    S: float = Field(..., gt=0, description="Spot price, must be > 0")
+    K: float = Field(..., gt=0, description="Strike price, must be > 0")
+    T: float = Field(..., ge=0, description="Maturity in years, must be >= 0")
+    r: float = Field(..., description="Risk-free rate")
+    sigma: float = Field(..., ge=0, description="Volatility, must be >= 0")
+    option_type: Literal['call', 'put']
+    position: int = Field(1, description="Position: +1 for long, -1 for short") # Default position is long
+
+    @validator("position")
+    def check_position(cls, v):
+        if v not in (1, -1):
+            raise ValueError("Position must be +1 (long) or -1 (short)")
+        return v
 
     def d1(self) -> float:
         return (np.log(self.S / self.K) + (self.r + 0.5 * self.sigma ** 2) * self.T) / (self.sigma * np.sqrt(self.T))
@@ -21,93 +26,117 @@ class Option:
         return self.d1() - self.sigma * np.sqrt(self.T)
 
     def call_price(self) -> float:
-        d1 = self.d1()
-        d2 = self.d2()
+        d1, d2 = self.d1(), self.d2()
         return ((self.S * norm.cdf(d1)) - (self.K * np.exp(-self.r * self.T) * norm.cdf(d2))) * self.position
 
     def put_price(self) -> float:
-        d1 = self.d1()
-        d2 = self.d2()
+        d1, d2 = self.d1(), self.d2()
         return ((self.K * np.exp(-self.r * self.T) * norm.cdf(-d2)) - (self.S * norm.cdf(-d1))) * self.position
 
     def price(self) -> float:
-        if self.option_type == 'call':
-            return self.call_price()
-        elif self.option_type == 'put':
-            return self.put_price()
-        else:
-            raise ValueError("option_type must be 'call' or 'put'")
+        return self.call_price() if self.option_type == 'call' else self.put_price()
 
-# Strategy Pricer using Black-Scholes Model
-class Strategy:
-    def __init__(self, name: str, options: List[Option]):
-        self.name = name
-        self.options = options
-    
+# Strategy Pricer
+class Strategy(BaseModel):
+    name: str
+    options: List[Option]
+
     def price(self) -> float:
         return sum(option.price() for option in self.options)
-    
+
     @classmethod
     def call_spread(cls, S: float, K1: float, K2: float, T: float, r: float, sigma: float):
-        options = [
-            Option(S, K1, T, r, sigma, 'call', position=1),  # Long call
-            Option(S, K2, T, r, sigma, 'call', position=-1)   # Short call
+
+        k_low, k_high = (K1, K2) if K1 < K2 else (K2, K1)
+
+        opts = [
+            Option(S=S, K=k_low, T=T, r=r, sigma=sigma, option_type="call", position=1),    # Long call
+            Option(S=S, K=k_high, T=T, r=r, sigma=sigma, option_type="call", position=-1),  # Short call
         ]
-        return cls("Call Spread", options)
-    
+        return cls(name="Call Spread", options=opts)
+
     @classmethod
     def put_spread(cls, S: float, K1: float, K2: float, T: float, r: float, sigma: float):
-        options = [
-            Option(S, K2, T, r, sigma, 'put', position=1),  # Long put
-            Option(S, K1, T, r, sigma, 'put', position=-1)   # Short put
+
+        k_low, k_high = (K1, K2) if K1 < K2 else (K2, K1)
+
+        opts = [
+            Option(S=S, K=k_high, T=T, r=r, sigma=sigma, option_type="put", position=+1),   # Long put
+            Option(S=S, K=k_low,  T=T, r=r, sigma=sigma, option_type="put", position=-1),   # Short put
         ]
-        return cls("Put Spread", options)
-    
+        return cls(name="Put Spread", options=opts)
+
     @classmethod
     def straddle(cls, S: float, K: float, T: float, r: float, sigma: float):
-        options = [
-            Option(S, K, T, r, sigma, 'call', position=1),
-            Option(S, K, T, r, sigma, 'put', position=1)
+        opts = [
+            Option(S=S, K=K, T=T, r=r, sigma=sigma, option_type="call", position=1),    # Long call
+            Option(S=S, K=K, T=T, r=r, sigma=sigma, option_type="put", position=1),     # Long put
         ]
-        return cls("Straddle", options)
-    
+        return cls(name="Straddle", options=opts)
+
     @classmethod
     def strangle(cls, S: float, K1: float, K2: float, T: float, r: float, sigma: float):
-        options = [
-            Option(S, K2, T, r, sigma, 'call', position=1),
-            Option(S, K1, T, r, sigma, 'put', position=1)
+        
+        k_low, k_high = (K1, K2) if K1 < K2 else (K2, K1)
+        
+        opts = [
+            Option(S=S, K=k_high, T=T, r=r, sigma=sigma, option_type="call", position=1),    # Long call
+            Option(S=S, K=k_low, T=T, r=r, sigma=sigma, option_type="put", position=1),     # Long put with lower strike
         ]
-        return cls("Strangle", options)
-    
-    def __repr__(self):
-        return f"Strategy('{self.name}', {len(self.options)} options, price={self.price():.2f})"
+        return cls(name="Strangle", options=opts)
 
-# Example usage:
+# Greeks Calculator
+class Greeks(BaseModel):
+    option: Option
+
+    def delta(self) -> float:
+        d1 = self.option.d1()
+        if self.option.option_type == 'call':
+            return self.option.position * norm.cdf(d1)
+        else:
+            return self.option.position * (norm.cdf(d1) - 1)
+
+    def gamma(self) -> float:
+        d1 = self.option.d1()
+        return abs(self.option.position) * norm.pdf(d1) / (self.option.S * self.option.sigma * np.sqrt(self.option.T))
+
+    def vega(self) -> float:
+        d1 = self.option.d1()
+        return abs(self.option.position) * self.option.S * norm.pdf(d1) * np.sqrt(self.option.T) / 100
+
+    def theta(self) -> float:
+        d1, d2 = self.option.d1(), self.option.d2()
+        first = -(self.option.S * norm.pdf(d1) * self.option.sigma) / (2 * np.sqrt(self.option.T))
+        if self.option.option_type == 'call':
+            second = -self.option.r * self.option.K * np.exp(-self.option.r * self.option.T) * norm.cdf(d2)
+        else:
+            second = self.option.r * self.option.K * np.exp(-self.option.r * self.option.T) * norm.cdf(-d2)
+        return self.option.position * (first + second) / 365
+
+    def rho(self) -> float:
+        d2 = self.option.d2()
+        if self.option.option_type == 'call':
+            return self.option.position * self.option.K * self.option.T * np.exp(-self.option.r * self.option.T) * norm.cdf(d2) / 100
+        else:
+            return -self.option.position * self.option.K * self.option.T * np.exp(-self.option.r * self.option.T) * norm.cdf(-d2) / 100
+
+    def all_greeks(self) -> dict:
+        return {
+            "delta": self.delta(),
+            "gamma": self.gamma(),
+            "vega": self.vega(),
+            "theta": self.theta(),
+            "rho": self.rho(),
+        }
+
+
+# ================= Example =================
 if __name__ == "__main__":
-    # Paramètres du marché
-    S = 100      # Spot price
-    T = 1.0      # 1 an
-    r = 0.05     # Taux 5%
-    sigma = 0.2  # Vol 20%
-    
-    # Option simple
-    call = Option(S=100, K=100, T=1.0, r=0.05, sigma=0.2, option_type='call')
-    print(f"Call simple: {call.price():.2f}")
-    
-    # Stratégies avec classmethods
-    print("\n--- Stratégies ---")
-    
-    call_spread = Strategy.call_spread(S, K1=95, K2=105, T=T, r=r, sigma=sigma)
-    print(call_spread)
-    x=call_spread.price()
-    print(x)
+    call1 = Option(S=100, K=95, T=1, r=0.05, sigma=0.2, option_type="call", position=1)
+    call2 = Option(S=100, K=105, T=1, r=0.05, sigma=0.2, option_type="call", position=-1)
+    spread = Strategy(name="Call Spread", options=[call1, call2])
+    print("Call price:", spread.price())
 
-    put_spread = Strategy.put_spread(S, K1=95, K2=105, T=T, r=r, sigma=sigma)
-    print(put_spread)
-    
-    straddle = Strategy.straddle(S, K=100, T=T, r=r, sigma=sigma)
-    print(straddle)
-    
-    strangle = Strategy.strangle(S, K1=95, K2=105, T=T, r=r, sigma=sigma)
-    print(strangle)
-
+    strat = Strategy.call_spread(S=100, K1=95, K2=105, T=1, r=0.05, sigma=0.2)
+    print(strat)
+    print("Spread price:", strat.price())
