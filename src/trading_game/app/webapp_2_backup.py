@@ -6,28 +6,19 @@ from datetime import datetime, timedelta
 from scipy.stats import norm
 from streamlit_autorefresh import st_autorefresh
 
-import sys
-sys.path.extend(['C:\\Users\\amand\\Desktop\\M2\\python\\trading_game_project'])
-
-from settings import REFRESH_INTERVAL
-from src.trading_game.core.market import Stock
-
-
-
 # Page config
-st.set_page_config(page_title="Flow Master", layout="wide")
+st.set_page_config(page_title="Options Trading Game", layout="wide")
 
 # Auto-refresh every 1500ms (1.5 seconds) when not paused
 if 'trading_paused' not in st.session_state:
     st.session_state.trading_paused = False
 
 if not st.session_state.trading_paused:
-    count = st_autorefresh(interval=REFRESH_INTERVAL, key="price_refresh")
+    count = st_autorefresh(interval=1500, key="price_refresh")
 
 # Initialize session state
 if 'initialized' not in st.session_state:
     st.session_state.initialized = True
-    #stock = Stock(name="ABC", ticker="ABC", sector="tech", rate=0.05, vol = 0.20, init_price=100)
     st.session_state.current_price = 100.0
     st.session_state.price_history = [100.0]
     st.session_state.time_history = [datetime.now()]
