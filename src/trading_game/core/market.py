@@ -4,7 +4,7 @@ from typing import Optional, Dict
 import time
 import numpy as np
 
-from settings import RF
+from trading_game.config.settings import RF
 
 
 
@@ -16,9 +16,20 @@ class Stock(BaseModel):
     init_price: Optional[float] = 100
     init_time: Optional[float] = Field(default_factory=time.time)
     rate: Optional[float] = RF
-    history: Optional[Dict[float, float]] = Field(default_factory=dict)
+    price_history: Optional[list] = None
+    time_history: Optional[list] = None
     last_price: float = None
     last_time: float = None
+
+    @model_validator(mode='after')
+    def set_price_history(self):
+        self.price_history = [self.init_price]
+        return self
+
+    @model_validator(mode='after')
+    def set_time_history(self):
+        self.time_history = [self.init_time]
+        return self
 
     @model_validator(mode='after')
     def set_last_price(self):
@@ -41,6 +52,7 @@ class Stock(BaseModel):
 
         self.last_price = p
         self.last_time = t
-        self.history[t] = p
+        self.price_history.append(p)
+        self.time_history.append(t)
 
         return t, p

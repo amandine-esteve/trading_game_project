@@ -6,6 +6,9 @@ from datetime import datetime, timedelta
 from scipy.stats import norm
 from streamlit_autorefresh import st_autorefresh
 
+from trading_game.config.settings import REFRESH_INTERVAL
+from trading_game.core.market import Stock
+
 # ============================================================================
 # PAGE CONFIG - Dark Theme
 # ============================================================================
@@ -168,9 +171,10 @@ div[data-testid="stMetricLabel"] { color: white !important; }
 # ============================================================================
 if 'initialized' not in st.session_state:
     st.session_state.initialized = True
-    st.session_state.current_price = 100.0
-    st.session_state.price_history = [100.0]
-    st.session_state.time_history = [datetime.now()]
+    st.session_state.stock = Stock(name="alphabet", ticker="abc", sector="tech", vol=0.3)
+    #st.session_state.current_price = 100.0
+    # st.session_state.price_history = [100.0]
+    # st.session_state.time_history = [datetime.now()]
     st.session_state.cash = 100000.0
     st.session_state.starting_cash = 100000.0
     st.session_state.positions = []
@@ -194,7 +198,7 @@ if 'trading_paused' not in st.session_state:
 
 # Auto-refresh (AFTER initialization)
 if not st.session_state.trading_paused and not st.session_state.game_over:
-    count = st_autorefresh(interval=1500, key="price_refresh")
+    count = st_autorefresh(interval=REFRESH_INTERVAL, key="price_refresh")
 
 # ============================================================================
 # PRICING FUNCTIONS (Placeholders pour votre pricer)
@@ -265,7 +269,7 @@ def calculate_portfolio_greeks():
     
     for pos in st.session_state.positions:
         greeks = calculate_greeks(
-            st.session_state.current_price,
+            st.session_state.stock.last_price,
             pos['strike'],
             pos['time_to_expiry'],
             0.02,
@@ -292,7 +296,7 @@ def calculate_total_portfolio_value():
     
     for pos in st.session_state.positions:
         option_price = black_scholes(
-            st.session_state.current_price,
+            st.session_state.stock.last_price,
             pos['strike'],
             pos['time_to_expiry'],
             0.02,
@@ -302,7 +306,7 @@ def calculate_total_portfolio_value():
         total += option_price * pos['quantity'] * 100 * pos['side']
     
     if 'futures_entry_price' in st.session_state and st.session_state.futures_position != 0:
-        futures_pnl = (st.session_state.current_price - st.session_state.futures_entry_price) * st.session_state.futures_position
+        futures_pnl = (st.session_state.stock.last_price - st.session_state.futures_entry_price) * st.session_state.futures_position
         total += futures_pnl
     
     return total
@@ -329,9 +333,10 @@ if not st.session_state.trading_paused and not st.session_state.game_over:
     if st.session_state.tick_count >= st.session_state.game_duration:
         st.session_state.game_over = True
     else:
-        st.session_state.current_price = simulate_price_movement(st.session_state.current_price)
-        st.session_state.price_history.append(st.session_state.current_price)
-        st.session_state.time_history.append(datetime.now())
+        st.session_state.stock.move_price()
+        # st.session_state.current_price = simulate_price_movement(st.session_state.current_price)
+        # st.session_state.price_history.append(st.session_state.current_price)
+        # st.session_state.time_history.append(datetime.now())
         st.session_state.tick_count += 1
         
         total_pnl = calculate_total_portfolio_value() - st.session_state.starting_cash
@@ -414,8 +419,8 @@ col1, col2, col3, col4, col5 = st.columns(5)
 with col1:
     st.metric(
         "Underlying Price", 
-        f"${st.session_state.current_price:.2f}",
-        delta=f"{st.session_state.current_price - st.session_state.price_history[-2]:.2f}" if len(st.session_state.price_history) > 1 else None
+        f"${st.session_state.stock.last_price:.2f}",
+        delta=f"{st.session_state.stock.last_price - st.session_state.stock.price_history[-2]:.2f}" if len(st.session_state.stock.price_history) > 1 else None
     )
 
 with col2:
@@ -450,7 +455,7 @@ def render_risk_bar(value, max_abs):
     pct = abs(value) / max_abs * 50  # 50% is half of the bar
     color = "#00aaff" if value >= 0 else "#ff4444"
     direction = "left" if value >= 0 else "right"
-    
+
     html = f"""
     <div style="position: relative; width: 100%; height: 20px; background-color: #2e3444; border-radius: 10px;">
         <div style="
@@ -477,11 +482,11 @@ with chart_col:
     st.subheader("📈 Live Stock Price")
     
     fig = go.Figure()
-    x_values = list(range(len(st.session_state.price_history)))
+    x_values = list(range(len(st.session_state.stock.price_history)))
     
     fig.add_trace(go.Scatter(
         x=x_values,
-        y=st.session_state.price_history,
+        y=st.session_state.stock.price_history,
         mode='lines',
         name='Underlying',
         line=dict(color='#00d4ff', width=2.5),
@@ -575,7 +580,7 @@ with risk_col:
     st.subheader("⚠️ Risk Dashboard")
     
     st.markdown("### Portfolio Greeks")
-    
+
     def get_risk_color(value, thresholds):
         abs_val = abs(value)
         if abs_val < thresholds[0]:
@@ -584,22 +589,22 @@ with risk_col:
             return "#ffaa00"
         else:
             return "#ff4444"
-        
+
     delta_color = get_risk_color(portfolio_greeks['delta'], [500, 1500])
     #st.markdown(f"**Delta:** <span style='color:{delta_color}; font-size:24px'>{portfolio_greeks['delta']:.0f}</span>", unsafe_allow_html=True)
     #st.progress(min(1.0, abs(portfolio_greeks['delta']) / 2000))
-    
+
     gamma_color = get_risk_color(portfolio_greeks['gamma'], [50, 150])
     #st.markdown(f"**Gamma:** <span style='color:{gamma_color}; font-size:24px'>{portfolio_greeks['gamma']:.2f}</span>", unsafe_allow_html=True)
     #st.progress(min(1.0, abs(portfolio_greeks['gamma']) / 200))
-    
+
     vega_color = get_risk_color(portfolio_greeks['vega'], [1000, 3000])
     #st.markdown(f"**Vega:** <span style='color:{vega_color}; font-size:24px'>{portfolio_greeks['vega']:.0f}</span>", unsafe_allow_html=True)
     #st.progress(min(1.0, abs(portfolio_greeks['vega']) / 5000))
-    
+
     theta_color = get_risk_color(portfolio_greeks['theta'], [50, 150])
     #st.markdown(f"**Theta:** <span style='color:{theta_color}; font-size:24px'>{portfolio_greeks['theta']:.2f}</span>", unsafe_allow_html=True)
-    
+
     # Delta
     st.markdown(f"**Delta:** <span style='color:{delta_color}; font-size:24px'>{portfolio_greeks['delta']:.0f}</span>", unsafe_allow_html=True)
     render_risk_bar(portfolio_greeks['delta'], 2000)
@@ -637,7 +642,7 @@ if st.session_state.positions:
     positions_data = []
     for idx, pos in enumerate(st.session_state.positions):
         current_price = black_scholes(
-            st.session_state.current_price,
+            st.session_state.stock.last_price,
             pos['strike'],
             pos['time_to_expiry'],
             0.02,
@@ -646,7 +651,7 @@ if st.session_state.positions:
         )
         
         greeks = calculate_greeks(
-            st.session_state.current_price,
+            st.session_state.stock.last_price,
             pos['strike'],
             pos['time_to_expiry'],
             0.02,
@@ -682,7 +687,7 @@ if st.session_state.positions:
             idx = int(position_to_close.split()[1])
             pos = st.session_state.positions[idx]
             current_price = black_scholes(
-                st.session_state.current_price,
+                st.session_state.stock.last_price,
                 pos['strike'],
                 pos['time_to_expiry'],
                 0.02,
@@ -703,7 +708,7 @@ with fut_col1:
     st.metric("Futures Position", f"{st.session_state.futures_position:+.0f} shares")
 with fut_col2:
     if 'futures_entry_price' in st.session_state and st.session_state.futures_position != 0:
-        futures_pnl = (st.session_state.current_price - st.session_state.futures_entry_price) * st.session_state.futures_position
+        futures_pnl = (st.session_state.stock.last_price - st.session_state.futures_entry_price) * st.session_state.futures_position
         st.metric("Futures P&L", f"${futures_pnl:,.0f}")
 with fut_col3:
     if st.session_state.futures_position != 0:
@@ -745,10 +750,10 @@ with hedge_col3:
             if st.session_state.futures_position == 0 or np.sign(futures_qty) == np.sign(st.session_state.futures_position):
                 total_position = st.session_state.futures_position + futures_qty
                 if st.session_state.futures_position == 0:
-                    st.session_state.futures_entry_price = st.session_state.current_price
+                    st.session_state.futures_entry_price = st.session_state.stock.last_price
                 else:
                     old_notional = st.session_state.futures_position * st.session_state.futures_entry_price
-                    new_notional = futures_qty * st.session_state.current_price
+                    new_notional = futures_qty * st.session_state.stock.last_price
                     st.session_state.futures_entry_price = (old_notional + new_notional) / total_position
                 st.session_state.futures_position = total_position
             else:
@@ -801,10 +806,10 @@ with control_col1:
         st.rerun()
 
 with control_col2:
-    if st.button("🔄 Reset Game", use_container_width=True, type ="primary"):
-        st.session_state.current_price = 100.0
-        st.session_state.price_history = [100.0]
-        st.session_state.time_history = [datetime.now()]
+    if st.button("🔄 Reset Game", use_container_width=True, type= "primary"):
+        #st.session_state.last_price = 100.0
+        #st.session_state.price_history = [100.0]
+        #st.session_state.time_history = [datetime.now()]
         st.session_state.cash = 100000.0
         st.session_state.starting_cash = 100000.0
         st.session_state.positions = []
@@ -841,7 +846,7 @@ with st.expander("🧪 Manual Trading (Testing Only)"):
         qty = st.number_input("Quantity", min_value=1, value=1)
         
         if st.button("Execute Trade"):
-            price = black_scholes(st.session_state.current_price, strike, days/365, 0.02, 0.3, option_type)
+            price = black_scholes(st.session_state.stock.last_price, strike, days/365, 0.02, 0.3, option_type)
             cost = price * qty * 100
             
             if side == "Long" and st.session_state.cash >= cost:
