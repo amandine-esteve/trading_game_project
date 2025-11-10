@@ -18,44 +18,150 @@ st.set_page_config(
 # Custom CSS for dark theme
 st.markdown("""
 <style>
-    .stApp {
-        background-color: #0e1117;
-    }
-    .metric-card {
-        background-color: #1e2130;
-        padding: 20px;
-        border-radius: 10px;
-        border: 1px solid #2e3444;
-    }
-    .risk-high {
-        color: #ff4444 !important;
-        font-weight: bold;
-    }
-    .risk-medium {
-        color: #ffaa00 !important;
-    }
-    .risk-low {
-        color: #00ff88 !important;
-    }
-    div[data-testid="stMetricValue"] {
-        font-size: 28px;
-    }
-    .nav-link {
-        display: block;
-        padding: 10px;
-        margin: 5px 0;
-        background-color: #1e2130;
-        border-radius: 5px;
-        text-decoration: none;
-        color: white;
-        text-align: center;
-        transition: background-color 0.3s;
-    }
-    .nav-link:hover {
-        background-color: #2e3444;
-    }
+/* ---------- App Background & Global Text ---------- */
+.stApp {
+    background-color: #0e1117;
+    color: #ffffff !important;  /* Make all text white */
+}
+
+/* ---------- Sidebar / Navigation Links ---------- */
+.nav-link {
+    display: block;
+    padding: 10px;
+    margin: 5px 0;
+    background-color: #1e2130;
+    border-radius: 5px;
+    text-decoration: none;
+    color: white; /* text white */
+    text-align: center;
+    transition: background-color 0.3s;
+}
+.nav-link:hover {
+    background-color: #2e3444;
+}
+
+/* ---------- Metric Cards ---------- */
+.metric-card {
+    background-color: #1e2130;
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid #2e3444;
+}
+
+/* Metric titles (labels) */
+div[data-testid="stMetricLabel"] {
+    color: white !important;
+}
+/* Metric values (numbers) */
+div[data-testid="stMetricValue"] {
+    color: white !important;
+    font-weight: bold;
+    font-size: 28px;
+}
+/* Metric delta values */
+div[data-testid="stMetricDelta"] {
+    color: white !important;
+}
+
+/* ---------- Risk Coloring ---------- */
+.risk-high { color: #ff4444 !important; font-weight: bold; }
+.risk-medium { color: #ffaa00 !important; }
+.risk-low { color: #00ff88 !important; }
+
+/* ---------- Buttons ---------- */
+.stButton>button {
+    background-color: #ff4444 !important; /* red button background */
+    color: white !important;               /* white text */
+    font-weight: bold;
+    border-radius: 5px;
+}
+.stButton>button:hover {
+    background-color: #ff6666 !important;
+}
+
+/* Make control buttons less aggressive: secondary style */
+.stButton.secondary>button {
+    background-color: #1e2130 !important;
+    color: white !important;
+}
+
+/* ---------- Sliders, selects, inputs ---------- */
+.stSlider, .stSelectbox, .stNumberInput, .stRadio {
+    color: #ffffff !important;
+}
+
+/* ---------- Checkbox ---------- */
+/* Tick color when checked */
+[data-baseweb="checkbox"] input:checked + div {
+    background-color: #ff4444 !important;  /* red tick */
+}
+/* Checkbox label text */
+[data-baseweb="checkbox"] label {
+    color: white !important;
+}
+
+/* ---------- Progress Bars ---------- */
+.stProgress>div>div>div>div {
+    background-color: #ff4444 !important;
+}
+.stProgress>div>div>div {
+    background-color: #1e2130 !important;
+    color: white !important;
+}
+
+/* ---------- Expanders ---------- */
+.stExpander {
+    background-color: #1e2130 !important;
+    color: white !important;
+}
+.stExpander .stMarkdown,
+.stExpander .stDataFrame,
+.stExpander .stText {
+    color: white !important;
+}
+div[data-testid="stDataFrameContainer"] {
+    color: white !important;
+    background-color: #0e1117 !important;
+}
+div[data-testid="stInfo"] {
+    color: white !important;
+    background-color: #1e2130 !important;
+    border: 1px solid #2e3444;
+}
+
+/* ---------- Headers / Labels / Static text ---------- */
+.css-1v3fvcr, .css-1kyxreq, .css-1q8dd3e {
+    color: #ffffff !important;
+}
+
+/* ---------- Metric Progress Labels ---------- */
+div[data-testid="stMetricValue"] { color: white !important; font-weight: bold; }
+div[data-testid="stMetricDelta"] { color: white !important; }
+div[data-testid="stMetricLabel"] { color: white !important; }
+
+
+/* ---------- Risk Bars (Delta, Gamma, Vega, Theta) ---------- */
+.risk-bar-container {
+    position: relative;
+    width: 100%;
+    height: 16px;
+    background-color: #2e3444;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+.risk-bar {
+    height: 100%;
+    position: absolute;
+    top: 0;
+}
+   
+
 </style>
+
+
 """, unsafe_allow_html=True)
+
 
 # ============================================================================
 # INITIALIZE SESSION STATE FIRST (before auto-refresh!)
@@ -235,6 +341,7 @@ if not st.session_state.trading_paused and not st.session_state.game_over:
             time_remaining = (pos['expiry_date'] - datetime.now()).total_seconds() / (365 * 24 * 3600)
             pos['time_to_expiry'] = max(0, time_remaining)
 
+
 # ============================================================================
 # SIDEBAR NAVIGATION
 # ============================================================================
@@ -329,6 +436,34 @@ with col5:
     st.metric("Risk Score", f"{score_color} {risk_score:.0f}/100")
 
 st.divider()
+
+
+def render_risk_bar(value, max_abs):
+    """
+    Render a horizontal bar where negative values fill to the left in red,
+    positive values fill to the right in blue.
+    max_abs is the maximum absolute value for scaling.
+    """
+    # Clamp value to [-max_abs, max_abs]
+    value = max(-max_abs, min(max_abs, value))
+    # Calculate percentage
+    pct = abs(value) / max_abs * 50  # 50% is half of the bar
+    color = "#00aaff" if value >= 0 else "#ff4444"
+    direction = "left" if value >= 0 else "right"
+    
+    html = f"""
+    <div style="position: relative; width: 100%; height: 20px; background-color: #2e3444; border-radius: 10px;">
+        <div style="
+            position: absolute;
+            {direction}: 50%;
+            width: {pct}%;
+            height: 100%;
+            background-color: {color};
+            border-radius: 8px;
+        "></div>
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
 
 # ============================================================================
 # MARKET OVERVIEW
@@ -433,9 +568,13 @@ with chart_col:
     )
     st.plotly_chart(fig_pnl, use_container_width=True)
 
+
+
 with risk_col:
     st.markdown('<a id="risk-dashboard"></a>', unsafe_allow_html=True)
     st.subheader("⚠️ Risk Dashboard")
+    
+    st.markdown("### Portfolio Greeks")
     
     def get_risk_color(value, thresholds):
         abs_val = abs(value)
@@ -445,24 +584,37 @@ with risk_col:
             return "#ffaa00"
         else:
             return "#ff4444"
-    
-    st.markdown("### Portfolio Greeks")
-    
+        
     delta_color = get_risk_color(portfolio_greeks['delta'], [500, 1500])
-    st.markdown(f"**Delta:** <span style='color:{delta_color}; font-size:24px'>{portfolio_greeks['delta']:.0f}</span>", unsafe_allow_html=True)
-    st.progress(min(1.0, abs(portfolio_greeks['delta']) / 2000))
+    #st.markdown(f"**Delta:** <span style='color:{delta_color}; font-size:24px'>{portfolio_greeks['delta']:.0f}</span>", unsafe_allow_html=True)
+    #st.progress(min(1.0, abs(portfolio_greeks['delta']) / 2000))
     
     gamma_color = get_risk_color(portfolio_greeks['gamma'], [50, 150])
-    st.markdown(f"**Gamma:** <span style='color:{gamma_color}; font-size:24px'>{portfolio_greeks['gamma']:.2f}</span>", unsafe_allow_html=True)
-    st.progress(min(1.0, abs(portfolio_greeks['gamma']) / 200))
+    #st.markdown(f"**Gamma:** <span style='color:{gamma_color}; font-size:24px'>{portfolio_greeks['gamma']:.2f}</span>", unsafe_allow_html=True)
+    #st.progress(min(1.0, abs(portfolio_greeks['gamma']) / 200))
     
     vega_color = get_risk_color(portfolio_greeks['vega'], [1000, 3000])
-    st.markdown(f"**Vega:** <span style='color:{vega_color}; font-size:24px'>{portfolio_greeks['vega']:.0f}</span>", unsafe_allow_html=True)
-    st.progress(min(1.0, abs(portfolio_greeks['vega']) / 5000))
+    #st.markdown(f"**Vega:** <span style='color:{vega_color}; font-size:24px'>{portfolio_greeks['vega']:.0f}</span>", unsafe_allow_html=True)
+    #st.progress(min(1.0, abs(portfolio_greeks['vega']) / 5000))
     
     theta_color = get_risk_color(portfolio_greeks['theta'], [50, 150])
-    st.markdown(f"**Theta:** <span style='color:{theta_color}; font-size:24px'>{portfolio_greeks['theta']:.2f}</span>", unsafe_allow_html=True)
+    #st.markdown(f"**Theta:** <span style='color:{theta_color}; font-size:24px'>{portfolio_greeks['theta']:.2f}</span>", unsafe_allow_html=True)
     
+    # Delta
+    st.markdown(f"**Delta:** <span style='color:{delta_color}; font-size:24px'>{portfolio_greeks['delta']:.0f}</span>", unsafe_allow_html=True)
+    render_risk_bar(portfolio_greeks['delta'], 2000)
+
+    # Gamma
+    st.markdown(f"**Gamma:** <span style='color:{gamma_color}; font-size:24px'>{portfolio_greeks['gamma']:.2f}</span>", unsafe_allow_html=True)
+    render_risk_bar(portfolio_greeks['gamma'], 200)
+
+    # Vega
+    st.markdown(f"**Vega:** <span style='color:{vega_color}; font-size:24px'>{portfolio_greeks['vega']:.0f}</span>", unsafe_allow_html=True)
+    render_risk_bar(portfolio_greeks['vega'], 5000)
+
+    # Theta
+    st.markdown(f"**Theta:** <span style='color:{theta_color}; font-size:24px'>{portfolio_greeks['theta']:.2f}</span>", unsafe_allow_html=True)
+    render_risk_bar(portfolio_greeks['theta'], 150)
     st.divider()
     
     st.markdown("### Risk Alerts")
@@ -631,7 +783,7 @@ with st.expander("💡 Example Interface"):
         st.write("Bid: $X.XX")
         st.write("Ask: $X.XX")
     with req_col3:
-        st.button("Accept Bid")
+        st.button("Accept Bid", type="primary")
         st.button("Accept Ask")
 
 st.divider()
@@ -644,12 +796,12 @@ st.header("🎮 Game Controls")
 control_col1, control_col2, control_col3 = st.columns(3)
 
 with control_col1:
-    if st.button("⏸️ Pause" if not st.session_state.trading_paused else "▶️ Resume", use_container_width=True):
+    if st.button("⏸️ Pause" if not st.session_state.trading_paused else "▶️ Resume", use_container_width=True, type="primary"):
         st.session_state.trading_paused = not st.session_state.trading_paused
         st.rerun()
 
 with control_col2:
-    if st.button("🔄 Reset Game", use_container_width=True):
+    if st.button("🔄 Reset Game", use_container_width=True, type ="primary"):
         st.session_state.current_price = 100.0
         st.session_state.price_history = [100.0]
         st.session_state.time_history = [datetime.now()]
@@ -664,7 +816,7 @@ with control_col2:
         st.rerun()
 
 with control_col3:
-    show_history = st.checkbox("📜 Show Trade History", value=False)
+    show_history = st.checkbox("📜 Show Trade History", value=True)
 
 if show_history:
     with st.expander("📜 Trade History", expanded=True):
