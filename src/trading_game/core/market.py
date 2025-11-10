@@ -44,7 +44,7 @@ class Stock(BaseModel):
     def move_price(self):
         t = time.time()
         delta_t = time.time() - self.last_time
-        dt = delta_t/(252*24*3600)
+        dt = delta_t/(252*4) #(252*24*3600)
 
         drift = (self.rate - 0.5 * self.vol ** 2) * dt
         diffusion = self.vol * np.sqrt(dt) * np.random.normal(0, 1)
