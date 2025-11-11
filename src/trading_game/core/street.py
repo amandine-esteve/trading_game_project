@@ -6,15 +6,19 @@ import random
 import numpy as np
 
 
-
 class TypeInvest(Enum):
     DIR = "Directional"
     VOL = "Volatility"
 
 class LevelRequest(Enum):
-    FIRST = 1
-    EASY = 2
-    DIFF = 3
+    #FIRST = 1
+    EASY = 1
+    DIFF = 2
+
+class StateRequest(Enum):
+    INITIALIZED = "Initialized"
+    ONGOING = "Ongoing"
+    CLOSED = "Closed"
 
 class Investor(BaseModel):
     name: str
@@ -35,42 +39,31 @@ class Investor(BaseModel):
             self.client_relationship = random.randint(0,10)
         return self
 
-class Street:
-    investors: List[Investor] = Field(default_factory=list)
+class Street(BaseModel):
+    investors: List[Investor]
 
     @model_validator(mode="after")
     def validate_investors(self):
         if len(self.investors) > 10:
             raise ValueError("Should not be more than 10 investors.")
-
-    def add_new_investor(self, new_investor: Investor):
-        ...
-
-    def _select_investor(self):
-        if len(self.investors) < 10:
-            new_investor = ...
-            all_investors = self.investors.copy() + [new_investor]
-            investor_choice = random.choice(all_investors)
-            if investor_choice == new_investor:
-                self.investors.append(new_investor)
-            return investor_choice
-        return random.choice(self.investors)
+        return self
 
 class QuoteRequest(BaseModel):
     investor: Investor
     level: LevelRequest
+    state: StateRequest
     nb: int
     price: float
     strat: Optional[str] = None
     strikes: Optional[List[float]] = None
 
-    @model_validator(mode="after")
-    def validate_level(self):
-        if self.level.value < 3 and self.investor.type_invest == TypeInvest.VOL:
-            raise ValueError("Investor must be directional for first or easy quote")
-        if self.level.value == 1 and self.investor.width_tolerance < 0.90:
-            raise ValueError("Investor must have wide tolerance for first quote")
-        return self
+    # @model_validator(mode="after")
+    # def validate_level(self):
+    #     if self.level.value < 3 and self.investor.type_invest == TypeInvest.VOL:
+    #         raise ValueError("Investor must be directional for first or easy quote")
+    #     if self.level.value == 1 and self.investor.width_tolerance < 0.90:
+    #         raise ValueError("Investor must have wide tolerance for first quote")
+    #     return self
 
     @model_validator(mode="after")
     def validate_nb(self):
@@ -82,7 +75,7 @@ class QuoteRequest(BaseModel):
     def set_strat(self):
         if self.strat is not None:
             return self
-        elif self.level.value < 3:
+        elif self.level.value < 2:
             self.strat = random.choice(["Call", "Put"])  # modify with enum option type (Ju)
         else:
             self.strat = random.choice(["Call", "Put", "CallSpread", "PutSpread", "Straddle", "Strangle"])
@@ -92,7 +85,7 @@ class QuoteRequest(BaseModel):
     def set_strikes(self):
         if self.strikes is not None:
             return self
-        elif self.level.value < 3:
+        elif self.level.value < 2:
             strike_relative = random.choice(np.linspace(0.05, 0.20, 4))
             factor = (1 + strike_relative) if self.strat == "Call" else (1 - strike_relative)
             self.strikes = [int(round(factor * self.price, 0))]
@@ -102,12 +95,12 @@ class QuoteRequest(BaseModel):
 
     def _generate_message(self) -> str: # ask chat for diff sentences
         if self.nb == 1:
-            message = f"{self.investor.company} [{self.investor.name}]: Hi could I please get a quote for a "
+            message = f"{self.investor.company} [{self.investor.name}]: Hi could I pls get a quote for a "
             if len(self.strikes) == 1:
                 message += f"{self.strikes[0]} "
             else :
                 message += f"{' - '.join(str(self.strikes))} "
-            message += f"{self.strat} pls?"
+            message += f"{self.strat}?"
             return message
         elif self.nb == 2:
             return f"Ty can I do $xxx more?"
