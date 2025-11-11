@@ -3,6 +3,8 @@ from scipy.stats import norm
 from typing import Literal, List, Optional
 from pydantic import BaseModel, Field, model_validator
 
+from trading_game.config.strat_pool import generate_random_strat_data
+
 # Vanilla Option Pricer using Black-Scholes Model
 class Option(BaseModel):
     S: float = Field(..., gt=0, description="Spot price, must be > 0")
@@ -11,7 +13,7 @@ class Option(BaseModel):
     r: float = Field(..., description="Risk-free rate")
     sigma: float = Field(..., ge=0, description="Volatility, must be >= 0")
     option_type: Literal['call', 'put']
-    base: float = Field(360, description="Base for time calculations, default is 360")
+    base: float = Field(252, description="Base for time calculations, default is 252")
     position: int = Field(1, description="Position: +1 for long, -1 for short") # Default position is long
 
     @model_validator(mode='after')
@@ -46,45 +48,63 @@ class Strategy(BaseModel):
         return sum(option.price() for option in self.options)
 
     @classmethod
-    def call_spread(cls, S: float, K1: float, K2: float, T: float, r: float, sigma: float):
+    def call(cls, s:float, k:float, t:float, r:float, sigma:float):
+        opts = [Option(S=s, K=k, T=t, r=r, sigma=sigma, option_type="call")]
+        return cls(name="Call", options=opts)
 
-        k_low, k_high = (K1, K2) if K1 < K2 else (K2, K1)
+    @classmethod
+    def put(cls, s: float, k: float, t: float, r: float, sigma: float):
+        opts = [Option(S=s, K=k, T=t, r=r, sigma=sigma, option_type="put")]
+        return cls(name="Put", options=opts)
+
+    @classmethod
+    def call_spread(cls, s: float, k1: float, k2: float, t: float, r: float, sigma: float):
+
+        k_low, k_high = (k1, k2) if k1 < k2 else (k2, k1)
 
         opts = [
-            Option(S=S, K=k_low, T=T, r=r, sigma=sigma, option_type="call", position=1),    # Long call
-            Option(S=S, K=k_high, T=T, r=r, sigma=sigma, option_type="call", position=-1),  # Short call
+            Option(S=s, K=k_low, T=t, r=r, sigma=sigma, option_type="call", position=1),    # Long call
+            Option(S=s, K=k_high, T=t, r=r, sigma=sigma, option_type="call", position=-1),  # Short call
         ]
         return cls(name="Call Spread", options=opts)
 
     @classmethod
-    def put_spread(cls, S: float, K1: float, K2: float, T: float, r: float, sigma: float):
+    def put_spread(cls, s: float, k1: float, k2: float, t: float, r: float, sigma: float):
 
-        k_low, k_high = (K1, K2) if K1 < K2 else (K2, K1)
+        k_low, k_high = (k1, k2) if k1 < k2 else (k2, k1)
 
         opts = [
-            Option(S=S, K=k_high, T=T, r=r, sigma=sigma, option_type="put", position=+1),   # Long put
-            Option(S=S, K=k_low,  T=T, r=r, sigma=sigma, option_type="put", position=-1),   # Short put
+            Option(S=s, K=k_high, T=t, r=r, sigma=sigma, option_type="put", position=+1),   # Long put
+            Option(S=s, K=k_low, T=t, r=r, sigma=sigma, option_type="put", position=-1),   # Short put
         ]
         return cls(name="Put Spread", options=opts)
 
     @classmethod
-    def straddle(cls, S: float, K: float, T: float, r: float, sigma: float):
+    def straddle(cls, s: float, k: float, t: float, r: float, sigma: float):
         opts = [
-            Option(S=S, K=K, T=T, r=r, sigma=sigma, option_type="call", position=1),    # Long call
-            Option(S=S, K=K, T=T, r=r, sigma=sigma, option_type="put", position=1),     # Long put
+            Option(S=s, K=k, T=t, r=r, sigma=sigma, option_type="call", position=1),    # Long call
+            Option(S=s, K=k, T=t, r=r, sigma=sigma, option_type="put", position=1),     # Long put
         ]
         return cls(name="Straddle", options=opts)
 
     @classmethod
-    def strangle(cls, S: float, K1: float, K2: float, T: float, r: float, sigma: float):
+    def strangle(cls, s: float, k1: float, k2: float, t: float, r: float, sigma: float):
         
-        k_low, k_high = (K1, K2) if K1 < K2 else (K2, K1)
+        k_low, k_high = (k1, k2) if k1 < k2 else (k2, k1)
         
         opts = [
-            Option(S=S, K=k_high, T=T, r=r, sigma=sigma, option_type="call", position=1),    # Long call
-            Option(S=S, K=k_low, T=T, r=r, sigma=sigma, option_type="put", position=1),     # Long put with lower strike
+            Option(S=s, K=k_high, T=t, r=r, sigma=sigma, option_type="call", position=1),    # Long call
+            Option(S=s, K=k_low, T=t, r=r, sigma=sigma, option_type="put", position=1),     # Long put with lower strike
         ]
         return cls(name="Strangle", options=opts)
+
+    # add calendar spread?
+
+    @staticmethod
+    def generate_random_strategy(level: Literal['easy', 'hard'], s: float, sigma: float):
+        random_strat_name, random_strat_data = generate_random_strat_data(level, s, sigma)
+        generation_method = getattr(Strategy, random_strat_name)
+        return generation_method(**random_strat_data)
 
 # Greeks Calculator
 class Greeks(BaseModel):
@@ -99,7 +119,7 @@ class Greeks(BaseModel):
 
     def _is_strategy(self) -> bool:
         return self.strategy is not None
-    
+
     def _calculate_single_option_greeks(self, option: Option) -> dict:
         """
         Calculate Greeks for a single option

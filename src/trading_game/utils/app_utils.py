@@ -2,7 +2,7 @@ from trading_game.config.stock_pool import get_random_stock
 from trading_game.config.investor_pool import get_random_investors
 from trading_game.config.settings import NB_INVESTORS
 from trading_game.core.market import Stock
-from trading_game.core.street import Investor, Street, QuoteRequest, LevelRequest, StateRequest
+from trading_game.core.street import Investor, Street, QuoteRequest #, LevelRequest, StateRequest
 
 
 def create_stock():
@@ -16,7 +16,3 @@ def create_street():
     street = Street(investors=street_data)
     return street
 
-def create_quote_request(nb_qr: int, investor: Investor, price):
-    level = LevelRequest.EASY if nb_qr <=3 else LevelRequest.DIFF
-    quote_request = QuoteRequest(investor=investor, level=level, state=StateRequest.INITIALIZED, nb=1, price=price)
-    return quote_request
