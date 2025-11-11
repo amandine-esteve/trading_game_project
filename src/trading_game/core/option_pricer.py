@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.stats import norm
 from typing import Literal, List
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 # Vanilla Option Pricer using Black-Scholes Model
 class Option(BaseModel):
@@ -11,10 +11,11 @@ class Option(BaseModel):
     r: float = Field(..., description="Risk-free rate")
     sigma: float = Field(..., ge=0, description="Volatility, must be >= 0")
     option_type: Literal['call', 'put']
+    base: float = Field(360, description="Base for time calculations, default is 360")
     position: int = Field(1, description="Position: +1 for long, -1 for short") # Default position is long
 
-    @validator("position")
-    def check_position(cls, v):
+    @field_validator("position")
+    def check_positioqn(cls, v):
         if v not in (1, -1):
             raise ValueError("Position must be +1 (long) or -1 (short)")
         return v
@@ -98,11 +99,11 @@ class Greeks(BaseModel):
 
     def gamma(self) -> float:
         d1 = self.option.d1()
-        return abs(self.option.position) * norm.pdf(d1) / (self.option.S * self.option.sigma * np.sqrt(self.option.T))
+        return self.option.position * norm.pdf(d1) / (self.option.S * self.option.sigma * np.sqrt(self.option.T))
 
     def vega(self) -> float:
         d1 = self.option.d1()
-        return abs(self.option.position) * self.option.S * norm.pdf(d1) * np.sqrt(self.option.T) / 100
+        return self.option.position * self.option.S * norm.pdf(d1) * np.sqrt(self.option.T) / 100
 
     def theta(self) -> float:
         d1, d2 = self.option.d1(), self.option.d2()
@@ -111,7 +112,7 @@ class Greeks(BaseModel):
             second = -self.option.r * self.option.K * np.exp(-self.option.r * self.option.T) * norm.cdf(d2)
         else:
             second = self.option.r * self.option.K * np.exp(-self.option.r * self.option.T) * norm.cdf(-d2)
-        return self.option.position * (first + second) / 365
+        return self.option.position * (first + second) / self.option.base
 
     def rho(self) -> float:
         d2 = self.option.d2()
@@ -128,15 +129,3 @@ class Greeks(BaseModel):
             "theta": self.theta(),
             "rho": self.rho(),
         }
-
-
-# ================= Example =================
-if __name__ == "__main__":
-    call1 = Option(S=100, K=95, T=1, r=0.05, sigma=0.2, option_type="call", position=1)
-    call2 = Option(S=100, K=105, T=1, r=0.05, sigma=0.2, option_type="call", position=-1)
-    spread = Strategy(name="Call Spread", options=[call1, call2])
-    print("Call price:", spread.price())
-
-    strat = Strategy.call_spread(S=100, K1=95, K2=105, T=1, r=0.05, sigma=0.2)
-    print(strat)
-    print("Spread price:", strat.price())
