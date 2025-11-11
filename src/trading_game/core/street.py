@@ -1,9 +1,10 @@
-from pydantic import BaseModel, model_validator, Field
+import random
+from datetime import date
 from enum import Enum
 from typing import Optional, List
 
-import random
 import numpy as np
+from pydantic import BaseModel, model_validator, Field
 
 
 class TypeInvest(Enum):
@@ -11,7 +12,6 @@ class TypeInvest(Enum):
     VOL = "Volatility"
 
 class LevelRequest(Enum):
-    #FIRST = 1
     EASY = 1
     DIFF = 2
 
@@ -51,27 +51,12 @@ class Street(BaseModel):
 class QuoteRequest(BaseModel):
     investor: Investor
     level: LevelRequest
-    state: StateRequest
-    nb: int
     price: float
     strat: Optional[str] = None
     strikes: Optional[List[float]] = None
+    maturities: Optional[List[date]] = None
 
-    # @model_validator(mode="after")
-    # def validate_level(self):
-    #     if self.level.value < 3 and self.investor.type_invest == TypeInvest.VOL:
-    #         raise ValueError("Investor must be directional for first or easy quote")
-    #     if self.level.value == 1 and self.investor.width_tolerance < 0.90:
-    #         raise ValueError("Investor must have wide tolerance for first quote")
-    #     return self
-
-    @model_validator(mode="after")
-    def validate_nb(self):
-        if self.nb > 3:
-            raise ValueError("Quote cannot be requested again")
-        return self
-
-    @model_validator(mode="after")
+    @model_validator(mode="after") #plug w/ Ju stuff and check level if not None
     def set_strat(self):
         if self.strat is not None:
             return self
@@ -81,7 +66,7 @@ class QuoteRequest(BaseModel):
             self.strat = random.choice(["Call", "Put", "CallSpread", "PutSpread", "Straddle", "Strangle"])
         return self
 
-    @model_validator(mode="after")
+    @model_validator(mode="after") #enhance when plugged
     def set_strikes(self):
         if self.strikes is not None:
             return self
@@ -93,19 +78,19 @@ class QuoteRequest(BaseModel):
             ...
         return self
 
-    def _generate_message(self) -> str: # ask chat for diff sentences
-        if self.nb == 1:
-            message = f"{self.investor.company} [{self.investor.name}]: Hi could I pls get a quote for a "
-            if len(self.strikes) == 1:
-                message += f"{self.strikes[0]} "
-            else :
-                message += f"{' - '.join(str(self.strikes))} "
-            message += f"{self.strat}?"
-            return message
-        elif self.nb == 2:
-            return f"Ty can I do $xxx more?"
-        else:
-            return "Great! I'll do $xxx more if ok w u"
+    #maturities model validator
+
+    def generate_message(self) -> str:
+        message = f"{self.investor.company} [{self.investor.name}]: Hi could I pls get a quote for a "
+        if len(self.strikes) == 1:
+            message += f"{self.strikes[0]} "
+        else :
+            message += f"{' - '.join(str(self.strikes))} "
+        message += f"{self.strat}?"
+        return message
+
+    def create_strat(self):
+        ...
 
 
 
