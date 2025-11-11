@@ -93,7 +93,7 @@ class QuoteRequest(BaseModel):
             ...
         return self
 
-    def _generate_message(self) -> str: # ask chat for diff sentences
+    def generate_message(self) -> str: # ask chat for diff sentences
         if self.nb == 1:
             message = f"{self.investor.company} [{self.investor.name}]: Hi could I pls get a quote for a "
             if len(self.strikes) == 1:

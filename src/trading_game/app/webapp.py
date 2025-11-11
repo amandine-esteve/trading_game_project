@@ -782,10 +782,18 @@ st.info("🔌 **PLACEHOLDER** - Section pour brancher le code de génération de
 if st.session_state.tick_count>3 and "quote_request" not in st.session_state:
     investor = random.choice(st.session_state.street.investors)
     st.session_state.quote_request = create_quote_request(st.session_state.nb_qr, investor, st.session_state.stock.last_price)
-    print(st.session_state.quote_request.nb)
-if "quote_request" in st.session_state and st.session_state.quote_request.state.value=="Initialized":
-    print(st.session_state.quote_request.nb)
-    st.write(st.session_state.quote_request._generate_message())
+# st.write(st.session_state.quote_request.generate_message())
+# col1, col2 = st.columns(2)
+# with col1:
+#     bid = st.number_input("bid")
+# with col2:
+#     ask = st.number_input("ask")
+# st.button("Submit")
+# real_mid = ... #price request
+# accept_bid = real_mid - 0.5 * st.session_state.quote_request.investor.width_tolerance
+# accept_ask = real_mid + 0.5 * st.session_state.quote_request.investor.width_tolerance
+# # client accpets/refuses quote
+# # update position
 
 with st.expander("💡 Example Interface"):
     req_col1, req_col2, req_col3 = st.columns(3)
