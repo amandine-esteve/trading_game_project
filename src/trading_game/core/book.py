@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Tuple, Union
+from typing import Optional, Dict, Tuple, Union, Literal
 
 from .market import Stock
 from .option_pricer import Option, Strategy, Greeks
@@ -20,10 +20,6 @@ class Book(BaseModel):
     def add_option(self, option: Option, quantity: int, trade_price: float, trade_id: Optional[str] = None) -> str:
         
         """ Add an option position to the book """
-
-        # If the option price is negative or zero, raise error
-        if trade_price <= 0:
-            raise ValueError(f"Trade price must be positive, got {trade_price}")
         
         # Generate trade_id if not provided
         if trade_id is None:
@@ -71,18 +67,29 @@ class Book(BaseModel):
             trade_ids.append(tid)
         
         return trade_ids
-    
+
     def hedge_with_stock(self, quantity: int, trade_price: Optional[float] = None, trade_id: Optional[str] = None) -> str:
         """ Hedge portfolio by buying/selling stock """
+        
+        if self.stock is None:
+            raise ValueError("Book.stock must be set before hedging.")
+        if quantity == 0:
+            raise ValueError("quantity must be non-zero.")
+
+        trade_id = trade_id or f"stk_{len(self.trade_history)}"
         self.stock_quantity += quantity
+        # (quantity, price, asset_type, ref_key)
+        self.trade_history[trade_id] = (quantity, float(trade_price), "stock", "STOCK")
+        
+        return trade_id
     
     def compute_trade_pnl(self) -> float:
         """ Calculate total PnL from all trades """
         pnl = 0.0
         
-        for trade_id, (quantity, trade_price, asset_type, ref_key) in self.trade_history.items():
+        for _ , (quantity, trade_price, asset_type, ref_key) in self.trade_history.items():
             if asset_type == "stock":
-                current_price = self.stock.move_price()[1]
+                current_price = self.set_last_price()
                 pnl += quantity * (current_price - trade_price)
             
             elif asset_type == "option":
@@ -103,7 +110,7 @@ class Book(BaseModel):
             value += quantity * option.price()
         
         # Value from stock
-        value += self.stock_quantity * self.stock.move_price()[1]
+        value += self.stock_quantity * self.set_last_price()
         
         return value
     
@@ -155,11 +162,11 @@ class Book(BaseModel):
                 "quantity": abs(quantity),
                 "side": "LONG" if quantity > 0 else "SHORT",
                 "price": option.price(),
-                "value": quantity * option.price() * 100,
-                "delta": option_greeks["delta"] * quantity * 100,
-                "gamma": option_greeks["gamma"] * quantity * 100,
-                "vega": option_greeks["vega"] * quantity * 100,
-                "theta": option_greeks["theta"] * quantity * 100
+                "value": quantity *option.price(),
+                "delta": option_greeks["delta"] * quantity,
+                "gamma": option_greeks["gamma"] * quantity,
+                "vega": option_greeks["vega"] * quantity,
+                "theta": option_greeks["theta"] * quantity
             })
         
         # Stock summary
@@ -167,8 +174,8 @@ class Book(BaseModel):
             "ticker": self.stock.ticker,
             "quantity": self.stock_quantity,
             "side": "LONG" if self.stock_quantity > 0 else "SHORT" if self.stock_quantity < 0 else "FLAT",
-            "price": self.stock.move_price()[1],
-            "value": self.stock_quantity * self.stock.move_price()[1]
+            "price": self.stock.set_last_price,
+            "value": self.stock_quantity * self.stock.set_last_price()
         }
         
         return summary
