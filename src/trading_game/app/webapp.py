@@ -8,7 +8,7 @@ from scipy.stats import norm
 from streamlit_autorefresh import st_autorefresh
 
 from trading_game.config.settings import REFRESH_INTERVAL
-from trading_game.utils.app_utils import create_stock, create_street, create_quote_request
+from trading_game.utils.app_utils import create_stock #, create_street, create_quote_request
 
 # ============================================================================
 # PAGE CONFIG - Dark Theme
@@ -173,7 +173,7 @@ div[data-testid="stMetricLabel"] { color: white !important; }
 if 'initialized' not in st.session_state:
     st.session_state.initialized = True
     st.session_state.stock = create_stock()
-    st.session_state.street = create_street()
+    # st.session_state.street = create_street()
     st.session_state.nb_qr = 0
     # st.session_state.current_price = 100.0
     # st.session_state.price_history = [100.0]
@@ -779,13 +779,13 @@ st.markdown('<a id="clients"></a>', unsafe_allow_html=True)
 st.header("📞 Client Requests")
 st.info("🔌 **PLACEHOLDER** - Section pour brancher le code de génération des requests clients")
 
-if st.session_state.tick_count>3 and "quote_request" not in st.session_state:
-    investor = random.choice(st.session_state.street.investors)
-    st.session_state.quote_request = create_quote_request(st.session_state.nb_qr, investor, st.session_state.stock.last_price)
-    print(st.session_state.quote_request.nb)
-if "quote_request" in st.session_state and st.session_state.quote_request.state.value=="Initialized":
-    print(st.session_state.quote_request.nb)
-    st.write(st.session_state.quote_request._generate_message())
+# if st.session_state.tick_count>3 and "quote_request" not in st.session_state:
+#     investor = random.choice(st.session_state.street.investors)
+#     st.session_state.quote_request = create_quote_request(st.session_state.nb_qr, investor, st.session_state.stock.last_price)
+#     print(st.session_state.quote_request.nb)
+# if "quote_request" in st.session_state and st.session_state.quote_request.state.value=="Initialized":
+#     print(st.session_state.quote_request.nb)
+#     st.write(st.session_state.quote_request._generate_message())
 
 with st.expander("💡 Example Interface"):
     req_col1, req_col2, req_col3 = st.columns(3)
