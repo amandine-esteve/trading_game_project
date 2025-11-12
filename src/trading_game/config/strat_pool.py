@@ -3,32 +3,36 @@ import random
 import numpy as np
 from typing import Literal
 
-from trading_game.config.settings import RF
+from src.trading_game.config.settings import RF
 
 STRATEGY_POOL = {
     'easy':[
-        {"name": "call", "strike": 1, "maturity": 1, "call_moneyness": "otm"},
-        {"name": "put", "strike": 1, "maturity": 1, "call_moneyness": "itm"}
+        {"name": "call", "strike": 1, "maturity": 1, "call_moneyness": "otm", "option_type": 1},
+        {"name": "put", "strike": 1, "maturity": 1, "call_moneyness": "itm", "option_type": 1}
     ],
     'hard':[
-        {"name": "call_spread", "strike": 2, "maturity": 1, "call_moneyness": "otm"},
-        {"name": "put_spread", "strike": 2, "maturity": 1, "call_moneyness": "itm"},
-        {"name": "straddle", "strike": 1, "maturity": 1, "call_moneyness": "atm"},
-        {"name": "strangle", "strike": 2, "maturity": 1, "call_moneyness": "atm"}
-        #calendar
+        {"name": "call_spread", "strike": 2, "maturity": 1, "call_moneyness": "otm", "option_type": 1},
+        {"name": "put_spread", "strike": 2, "maturity": 1, "call_moneyness": "itm", "option_type": 1},
+        {"name": "straddle", "strike": 1, "maturity": 1, "call_moneyness": "atm", "option_type": 1},
+        {"name": "strangle", "strike": 2, "maturity": 1, "call_moneyness": "atm", "option_type": 1},
+        {"name": "calendar_spread", "strike": 1, "maturity": 2, "call_moneyness": "atm", "option_type": 2},
+        {"name": "risk_reversal_bullish", "strike": 2, "maturity": 1, "call_moneyness": "otm", "option_type": 1},
+        {"name": "risk_reversal_bearish", "strike": 2, "maturity": 1, "call_moneyness": "itm", "option_type": 1},
+        {"name": "butterfly", "strike": 3, "maturity": 1, "call_moneyness": "otm", "option_type": 2}
     ]
 }
 
 RELATIVE_STRIKE_POOL = np.linspace(0.0, 0.25, 6)
+MATURITY_POOL = [1/12, 1/6, 1/4, 1/2, 3/4, 1, 2, 3, 4, 5]
 
 def get_random_strat(level: Literal['easy','hard']):
     return random.choice(STRATEGY_POOL[level])
 
-def generate_random_strat_data(level: Literal['easy', 'hard'],  price:float, vol: float) -> tuple[str, dict]:
+def generate_random_strat_data(level: Literal['easy', 'hard'],  price:float) -> tuple[str, dict]:
 
     # Choose strategy
     strategy = get_random_strat(level)
-    strat = {"s": price}
+    strat = {}
 
     # Choose strike(s)
     if strategy["strike"] == 1:
@@ -52,10 +56,22 @@ def generate_random_strat_data(level: Literal['easy', 'hard'],  price:float, vol
             strike = round(factor * price, 0)
             strat[f"k{k}"] = strike
 
-    # Choose rest
-    strat["t"] = random.choice([1/12, 1/6, 1/4, 1/2, 3/4, 1, 2, 3, 4, 5])
+    # Choose maturity
+    if strategy["maturity"] == 1:
+        strat["t"] = random.choice(MATURITY_POOL)
+    else:
+        maturities = list()
+        for t in range(1, strategy["maturity"]+1):
+            maturity = random.choice([elem for elem in MATURITY_POOL if elem not in maturities])
+            maturities.append(maturity)
+            strat[f"t{t}"] = maturity
+
+    # Choose risk-free rate
     strat["r"] = RF
-    strat["sigma"] = vol
+
+    # Choose option type if needed
+    if strategy["option_type"] > 1:
+        strat["option_type"] = random.choice(["call", "put"])
 
     return strategy["name"], strat
 
