@@ -183,23 +183,21 @@ class OrderExecutor(BaseModel):
             return False
         return True
 
-    def execute_vanilla_order(self, order: VanillaOrder, option_pricer) -> bool:
-        """Execute a vanilla option order using the pricer"""
+    def execute_vanilla_order(self, order: VanillaOrder, option_class) -> bool:
+        """Execute a vanilla option order using the Option class"""
         if order not in self.pending_orders:
             return False
         
-        # Create option from pricer module
-        opt = option_pricer.Option(
-            S=order.spot_price,
+        # Create option instance
+        opt = option_class(
             K=order.strike,
             T=order.maturity,
             r=order.risk_free_rate,
-            sigma=order.volatility,
             option_type=order.option_type,
             position=1 if order.side == OrderSide.BUY else -1
         )
         
-        market_price = opt.price()
+        market_price = opt.price(S=order.spot_price, sigma=order.volatility)
         
         # Check if order can execute
         if not order.can_execute(abs(market_price)):
@@ -217,49 +215,41 @@ class OrderExecutor(BaseModel):
             
         return success
 
-    def execute_strategy_order(self, order: StrategyOrder, strategy_pricer) -> bool:
-        """Execute a strategy order using the Strategy pricer"""
+    def execute_strategy_order(self, order: StrategyOrder, strategy_class) -> bool:
+        """Execute a strategy order using the Strategy class"""
         if order not in self.pending_orders:
             return False
         
         # Create strategy based on type
         if order.strategy_type == StrategyType.CALL_SPREAD:
-            strat = strategy_pricer.Strategy.call_spread(
-                S=order.spot_price,
-                K1=order.strikes[0],
-                K2=order.strikes[1],
-                T=order.maturity,
+            strat = strategy_class.call_spread(
+                k1=order.strikes[0],
+                k2=order.strikes[1],
+                t=order.maturity,
                 r=order.risk_free_rate,
-                sigma=order.volatility
             )
         
         elif order.strategy_type == StrategyType.PUT_SPREAD:
-            strat = strategy_pricer.Strategy.put_spread(
-                S=order.spot_price,
-                K1=order.strikes[0],
-                K2=order.strikes[1],
-                T=order.maturity,
+            strat = strategy_class.put_spread(
+                k1=order.strikes[0],
+                k2=order.strikes[1],
+                t=order.maturity,
                 r=order.risk_free_rate,
-                sigma=order.volatility
             )
         
         elif order.strategy_type == StrategyType.STRADDLE:
-            strat = strategy_pricer.Strategy.straddle(
-                S=order.spot_price,
+            strat = strategy_class.straddle(
                 K=order.strikes[0],
-                T=order.maturity,
+                t=order.maturity,
                 r=order.risk_free_rate,
-                sigma=order.volatility
             )
         
         elif order.strategy_type == StrategyType.STRANGLE:
-            strat = strategy_pricer.Strategy.strangle(
-                S=order.spot_price,
-                K1=order.strikes[0],
-                K2=order.strikes[1],
-                T=order.maturity,
+            strat = strategy_class.strangle(
+                k1=order.strikes[0],
+                k2=order.strikes[1],
+                t=order.maturity,
                 r=order.risk_free_rate,
-                sigma=order.volatility
             )
         
         else:
@@ -268,7 +258,7 @@ class OrderExecutor(BaseModel):
             self.rejected_orders.append(order)
             return False
         
-        market_price = abs(strat.price())
+        market_price = abs(strat.price(S=order.spot_price, sigma=order.volatility))
         order.net_premium = market_price
         
         # Check if order can execute
@@ -317,13 +307,11 @@ class OrderExecutor(BaseModel):
                 if o.executed_price is not None
             )
         }
-    
-
 
 #Exemple to show how to use the OrderExecutor with vanilla and strategy orders
 # Créer un executor
 executor = OrderExecutor(max_position_size=1000)
-
+'''
 # Ordre vanilla
 vanilla = VanillaOrder(
     side=OrderSide.BUY,
@@ -356,3 +344,4 @@ spread = StrategyOrder(
 
 executor.submit_order(spread)
 executor.execute_strategy_order(spread, strategy_pricer=Strategy)
+'''
