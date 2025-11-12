@@ -27,7 +27,7 @@ class Investor(BaseModel):
     @model_validator(mode="after")
     def set_width_tolerance(self):
         if self.width_tolerance is None:
-            self.width_tolerance = random.uniform(0.1,0.6) if self.type_invest == TypeInvest.VOL else random.uniform(0.5, 0.9)
+            self.width_tolerance = random.uniform(0.1,0.2)
         return self
 
     @model_validator(mode="after")
@@ -51,6 +51,7 @@ class QuoteRequest(BaseModel):
     init_price: float
     strat: Optional[Strategy] = None
     way: Optional[Literal['buy', 'sell']] = random.choice(['buy', 'sell'])
+    quantity: Optional[float] = random.choice([250_000, 500_000, 1_000_000, 2_000_000])
 
     @model_validator(mode="after")
     def set_strat(self):
@@ -92,25 +93,21 @@ class QuoteRequest(BaseModel):
         strat_data = self.get_strat_data(self.strat)
         name = strat_data["name"]
         maturities = [self.maturity_to_string(mat) for mat in strat_data["maturities"]]
-        strikes = [str(k) for k in strat_data["strikes"]]
-
+        sorted_strikes = strat_data["strikes"].copy()
+        sorted_strikes.sort()
+        strikes = [str(k) for k in sorted_strikes]
         message = f"{self.investor.company} [{self.investor.name}]: Hi could I pls get a quote for a "
-        if len(maturities)==1:
-            message += f"{maturities[0]} "
-        else:
-            message += f"{'-'.join(maturities)}"
-        if len(strikes) == 1:
-            message += f"{strikes[0]} "
-        else :
-            message += f"{'-'.join(strikes)} "
-        message += f"{name.lower()}?"
+        message += f"{maturities[0]} " if len(maturities)==1 else f"{'-'.join(maturities)}"
+        message += f"{strikes[0]} " if len(strikes)==1 else f"{'-'.join(strikes)} "
+        message += f"{name.lower()} in "
+        message += f"{int(self.quantity/1_000)}k?" if self.quantity<1_000_000 else f"{int(self.quantity/1_000_000)}m?"
         return message
 
     def evaluate_bid_ask(self, bid: float, ask: float, price: float, vol: float) -> bool:
         mid = self.strat.price(price, vol)
-        if self.way=='buy' and ask <= mid + 0.5 * self.investor.width_tolerance:
+        if self.way=='buy' and ask <= mid + 0.5 * self.investor.width_tolerance * mid:
             return True
-        elif self.way=='sell' and bid >= mid - 0.5 * self.investor.width_tolerance:
+        elif self.way=='sell' and bid >= mid - 0.5 * self.investor.width_tolerance * mid :
             return True
         return False
 

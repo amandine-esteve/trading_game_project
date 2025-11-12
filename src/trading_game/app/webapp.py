@@ -14,7 +14,7 @@ from trading_game.utils.app_utils import create_stock #, create_street, create_q
 # PAGE CONFIG - Dark Theme
 # ============================================================================
 st.set_page_config(
-    page_title="Options Market Maker", 
+    page_title="Options Market Maker",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -213,33 +213,33 @@ def black_scholes(S, K, T, r, sigma, option_type='call'):
             return max(0, S - K)
         else:
             return max(0, K - S)
-    
+
     d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
     d2 = d1 - sigma * np.sqrt(T)
-    
+
     if option_type == 'call':
         price = S * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
     else:
         price = K * np.exp(-r * T) * norm.cdf(-d2) - S * norm.cdf(-d1)
-    
+
     return price
 
 def calculate_greeks(S, K, T, r, sigma, option_type='call'):
     """Calculate Greeks - À adapter selon votre pricer"""
     if T <= 0:
         return {'delta': 0, 'gamma': 0, 'theta': 0, 'vega': 0}
-    
+
     d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
-    
+
     if option_type == 'call':
         delta = norm.cdf(d1)
     else:
         delta = -norm.cdf(-d1)
-    
+
     gamma = norm.pdf(d1) / (S * sigma * np.sqrt(T))
     vega = S * norm.pdf(d1) * np.sqrt(T) / 100
     theta = -(S * norm.pdf(d1) * sigma) / (2 * np.sqrt(T)) / 365
-    
+
     return {'delta': delta, 'gamma': gamma, 'theta': theta, 'vega': vega}
 
 def get_bid_ask_spread(option_price, volatility=0.3):
@@ -269,7 +269,7 @@ def calculate_portfolio_greeks():
     total_gamma = 0
     total_vega = 0
     total_theta = 0
-    
+
     for pos in st.session_state.positions:
         greeks = calculate_greeks(
             st.session_state.stock.last_price,
@@ -279,13 +279,13 @@ def calculate_portfolio_greeks():
             0.3,
             pos['type']
         )
-        
+
         multiplier = pos['quantity'] * 100 * pos['side']
         total_delta += greeks['delta'] * multiplier
         total_gamma += greeks['gamma'] * multiplier
         total_vega += greeks['vega'] * multiplier
         total_theta += greeks['theta'] * multiplier
-    
+
     return {
         'delta': total_delta,
         'gamma': total_gamma,
@@ -296,7 +296,7 @@ def calculate_portfolio_greeks():
 def calculate_total_portfolio_value():
     """Calculate total portfolio value"""
     total = st.session_state.cash
-    
+
     for pos in st.session_state.positions:
         option_price = black_scholes(
             st.session_state.stock.last_price,
@@ -307,26 +307,26 @@ def calculate_total_portfolio_value():
             pos['type']
         )
         total += option_price * pos['quantity'] * 100 * pos['side']
-    
+
     if 'futures_entry_price' in st.session_state and st.session_state.futures_position != 0:
         futures_pnl = (st.session_state.stock.last_price - st.session_state.futures_entry_price) * st.session_state.futures_position
         total += futures_pnl
-    
+
     return total
 
 def calculate_risk_score():
     """Risk score based on delta, gamma, and P&L"""
     greeks = calculate_portfolio_greeks()
     portfolio_value = calculate_total_portfolio_value()
-    
+
     delta_risk = abs(greeks['delta']) / 1000
     gamma_risk = abs(greeks['gamma']) / 100
-    
+
     pnl = portfolio_value - st.session_state.starting_cash
     pnl_score = max(0, pnl / st.session_state.starting_cash * 100)
-    
+
     score = max(0, 100 - delta_risk * 30 - gamma_risk * 20 + pnl_score * 50)
-    
+
     return min(100, score)
 
 # ============================================================================
@@ -341,10 +341,10 @@ if not st.session_state.trading_paused and not st.session_state.game_over:
         # st.session_state.price_history.append(st.session_state.current_price)
         # st.session_state.time_history.append(datetime.now())
         st.session_state.tick_count += 1
-        
+
         total_pnl = calculate_total_portfolio_value() - st.session_state.starting_cash
         st.session_state.pnl_history.append(total_pnl)
-        
+
         for pos in st.session_state.positions:
             time_remaining = (pos['expiry_date'] - datetime.now()).total_seconds() / (365 * 24 * 3600)
             pos['time_to_expiry'] = max(0, time_remaining)
@@ -356,7 +356,7 @@ if not st.session_state.trading_paused and not st.session_state.game_over:
 with st.sidebar:
     st.title("🧭 Navigation")
     st.markdown("---")
-    
+
     st.markdown("""
     <a href="#market-overview" class="nav-link">📊 Market Overview</a>
     <a href="#risk-dashboard" class="nav-link">⚠️ Risk Dashboard</a>
@@ -364,20 +364,20 @@ with st.sidebar:
     <a href="#hedging" class="nav-link">🛡️ Delta Hedging</a>
     <a href="#clients" class="nav-link">📞 Client Requests</a>
     """, unsafe_allow_html=True)
-    
+
     st.markdown("---")
     st.markdown("### ⚙️ Settings")
-    
+
     new_duration = st.slider(
-        "Game Duration (ticks)", 
-        min_value=50, 
-        max_value=300, 
+        "Game Duration (ticks)",
+        min_value=50,
+        max_value=300,
         value=st.session_state.game_duration,
         help="Adjust game length"
     )
     if new_duration != st.session_state.game_duration and st.session_state.tick_count == 0:
         st.session_state.game_duration = new_duration
-    
+
     st.caption(f"⏱️ Refresh: 1.5s")
     st.caption(f"🎮 Status: {'PAUSED' if st.session_state.trading_paused else 'ACTIVE'}")
     st.caption(f"🏁 Game: {'OVER' if st.session_state.game_over else 'IN PROGRESS'}")
@@ -390,7 +390,7 @@ st.title("🎯 Options Market Maker Dashboard")
 if st.session_state.game_over:
     final_pnl = calculate_total_portfolio_value() - st.session_state.starting_cash
     final_score = calculate_risk_score()
-    
+
     if final_pnl > 0:
         st.success(f"🎉 GAME OVER - YOU WIN! Final P&L: ${final_pnl:,.0f} | Score: {final_score:.0f}/100")
     else:
@@ -421,14 +421,14 @@ col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
     st.metric(
-        "Underlying Price", 
+        "Underlying Price",
         f"${st.session_state.stock.last_price:.2f}",
         delta=f"{st.session_state.stock.last_price - st.session_state.stock.price_history[-2]:.2f}" if len(st.session_state.stock.price_history) > 1 else None
     )
 
 with col2:
     st.metric(
-        "Portfolio Value", 
+        "Portfolio Value",
         f"${portfolio_value:,.0f}",
         delta=f"{pnl_pct:.2f}%"
     )
@@ -483,10 +483,10 @@ chart_col, risk_col = st.columns([2, 1])
 
 with chart_col:
     st.subheader("📈 Live Stock Price")
-    
+
     fig = go.Figure()
     x_values = list(range(len(st.session_state.stock.price_history)))
-    
+
     fig.add_trace(go.Scatter(
         x=x_values,
         y=st.session_state.stock.price_history,
@@ -496,21 +496,21 @@ with chart_col:
         fill='tozeroy',
         fillcolor='rgba(0, 212, 255, 0.15)'
     ))
-    
+
     if not st.session_state.game_over:
         fig.add_vline(
-            x=st.session_state.tick_count, 
-            line_dash="dash", 
+            x=st.session_state.tick_count,
+            line_dash="dash",
             line_color="#ffaa00",
             opacity=0.5
         )
-    
+
     fig.update_layout(
         plot_bgcolor='#1e2130',
         paper_bgcolor='#1e2130',
         font=dict(color='#ffffff'),
         xaxis=dict(
-            showgrid=True, 
+            showgrid=True,
             gridcolor='#2e3444',
             title="Time (ticks)",
             range=[0, st.session_state.game_duration],
@@ -518,8 +518,8 @@ with chart_col:
             zerolinecolor='#2e3444'
         ),
         yaxis=dict(
-            showgrid=True, 
-            gridcolor='#2e3444', 
+            showgrid=True,
+            gridcolor='#2e3444',
             title="Price ($)",
             zeroline=False
         ),
@@ -528,11 +528,11 @@ with chart_col:
         showlegend=False
     )
     st.plotly_chart(fig, use_container_width=True)
-    
+
     st.subheader("💰 P&L Evolution")
-    
+
     fig_pnl = go.Figure()
-    
+
     fig_pnl.add_trace(go.Scatter(
         x=x_values,
         y=st.session_state.pnl_history,
@@ -542,21 +542,21 @@ with chart_col:
         fill='tozeroy',
         fillcolor=f'rgba(0, 255, 136, 0.15)' if pnl > 0 else 'rgba(255, 68, 68, 0.15)'
     ))
-    
+
     if not st.session_state.game_over:
         fig_pnl.add_vline(
-            x=st.session_state.tick_count, 
-            line_dash="dash", 
+            x=st.session_state.tick_count,
+            line_dash="dash",
             line_color="#ffaa00",
             opacity=0.5
         )
-    
+
     fig_pnl.update_layout(
         plot_bgcolor='#1e2130',
         paper_bgcolor='#1e2130',
         font=dict(color='#ffffff'),
         xaxis=dict(
-            showgrid=True, 
+            showgrid=True,
             gridcolor='#2e3444',
             title="Time (ticks)",
             range=[0, st.session_state.game_duration],
@@ -564,8 +564,8 @@ with chart_col:
             zerolinecolor='#2e3444'
         ),
         yaxis=dict(
-            showgrid=True, 
-            gridcolor='#2e3444', 
+            showgrid=True,
+            gridcolor='#2e3444',
             title="P&L ($)",
             zeroline=True,
             zerolinecolor='#ffaa00'
@@ -581,7 +581,7 @@ with chart_col:
 with risk_col:
     st.markdown('<a id="risk-dashboard"></a>', unsafe_allow_html=True)
     st.subheader("⚠️ Risk Dashboard")
-    
+
     st.markdown("### Portfolio Greeks")
 
     def get_risk_color(value, thresholds):
@@ -624,7 +624,7 @@ with risk_col:
     st.markdown(f"**Theta:** <span style='color:{theta_color}; font-size:24px'>{portfolio_greeks['theta']:.2f}</span>", unsafe_allow_html=True)
     render_risk_bar(portfolio_greeks['theta'], 150)
     st.divider()
-    
+
     st.markdown("### Risk Alerts")
     if abs(portfolio_greeks['delta']) > 1500:
         st.error(f"⚠️ High Delta Exposure: {portfolio_greeks['delta']:.0f}")
@@ -652,7 +652,7 @@ if st.session_state.positions:
             0.3,
             pos['type']
         )
-        
+
         greeks = calculate_greeks(
             st.session_state.stock.last_price,
             pos['strike'],
@@ -661,9 +661,9 @@ if st.session_state.positions:
             0.3,
             pos['type']
         )
-        
+
         position_pnl = (current_price - pos['purchase_price']) * pos['quantity'] * 100 * pos['side']
-        
+
         positions_data.append({
             'ID': idx,
             'Side': 'LONG' if pos['side'] == 1 else 'SHORT',
@@ -678,10 +678,10 @@ if st.session_state.positions:
             'Expiry': pos['expiry_date'].strftime('%Y-%m-%d'),
             'DTE': int(pos['time_to_expiry'] * 365)
         })
-    
+
     df_positions = pd.DataFrame(positions_data)
     st.dataframe(df_positions, use_container_width=True, hide_index=True)
-    
+
     close_col1, close_col2 = st.columns([3, 1])
     with close_col1:
         position_to_close = st.selectbox("Select position to close", [f"ID {p['ID']} - {p['Type']} {p['Strike']}" for p in positions_data])
@@ -734,14 +734,14 @@ with hedge_col1:
 
 with hedge_col2:
     futures_qty = st.number_input(
-        "Futures Quantity", 
-        min_value=-10000, 
-        max_value=10000, 
+        "Futures Quantity",
+        min_value=-10000,
+        max_value=10000,
         value=int(recommended_hedge),
         step=100,
         help="Positive = Long, Negative = Short"
     )
-    
+
     futures_cost = abs(futures_qty) * 0.5
     st.caption(f"Transaction cost: ${futures_cost:.2f}")
 
@@ -763,7 +763,7 @@ with hedge_col3:
                 st.session_state.futures_position += futures_qty
                 if st.session_state.futures_position == 0:
                     st.session_state.pop('futures_entry_price', None)
-            
+
             st.session_state.cash -= futures_cost
             st.success(f"Hedge executed! New position: {st.session_state.futures_position:+.0f}")
             st.rerun()
@@ -775,9 +775,9 @@ st.divider()
 # ============================================================================
 # CLIENT REQUESTS
 # ============================================================================
-st.markdown('<a id="clients"></a>', unsafe_allow_html=True)
-st.header("📞 Client Requests")
-st.info("🔌 **PLACEHOLDER** - Section pour brancher le code de génération des requests clients")
+# st.markdown('<a id="clients"></a>', unsafe_allow_html=True)
+# st.header("📞 Client Requests")
+# st.info("🔌 **PLACEHOLDER** - Section pour brancher le code de génération des requests clients")
 
 # if st.session_state.tick_count>3 and "quote_request" not in st.session_state:
 #     investor = random.choice(st.session_state.street.investors)
@@ -786,6 +786,160 @@ st.info("🔌 **PLACEHOLDER** - Section pour brancher le code de génération de
 # if "quote_request" in st.session_state and st.session_state.quote_request.state.value=="Initialized":
 #     print(st.session_state.quote_request.nb)
 #     st.write(st.session_state.quote_request._generate_message())
+
+
+# Initialize session state for chat history
+if 'quote_chat_history' not in st.session_state:
+    st.session_state.quote_chat_history = []
+
+if 'pending_quote' not in st.session_state:
+    st.session_state.pending_quote = None
+
+
+def add_quote_request(message, quote_id):
+    """Add a new quote request to the chat"""
+    st.session_state.quote_chat_history.append({
+        'type': 'request',
+        'message': message,
+        'quote_id': quote_id,
+        'timestamp': datetime.now().strftime("%H:%M:%S")
+    })
+    st.session_state.pending_quote = quote_id
+
+
+def add_player_response(quote_id, bid, ask):
+    """Add player's bid/ask response to the chat"""
+    st.session_state.quote_chat_history.append({
+        'type': 'player_response',
+        'quote_id': quote_id,
+        'bid': bid,
+        'ask': ask,
+        'timestamp': datetime.now().strftime("%H:%M:%S")
+    })
+
+
+def add_market_response(quote_id, result, action=None):
+    """
+    Add market response to the chat
+    result: 'hit', 'lifted', 'pass', or 'both'
+    action: optional details like 'bought at your bid' or 'sold at your ask'
+    """
+    messages = {
+        'hit': f"Done! Bought at your bid. {action or ''}",
+        'lifted': f"Done! Sold at your ask. {action or ''}",
+        'both': f"Done! Traded both sides. {action or ''}",
+        'pass': "Pass, thanks anyway."
+    }
+
+    st.session_state.quote_chat_history.append({
+        'type': 'market_response',
+        'quote_id': quote_id,
+        'result': result,
+        'message': messages.get(result, action or "No action taken."),
+        'timestamp': datetime.now().strftime("%H:%M:%S")
+    })
+    st.session_state.pending_quote = None
+
+
+def render_quote_chat():
+    """Render the quote request chat interface"""
+    st.subheader("💬 Quote Requests")
+
+    # Chat container with custom styling
+    chat_container = st.container()
+
+    with chat_container:
+        # Display chat history
+        for msg in st.session_state.quote_chat_history:
+            if msg['type'] == 'request':
+                # Quote request from market
+                st.markdown(f"""
+                <div style="background-color: #f0f2f6; padding: 10px; border-radius: 10px; margin: 5px 0; max-width: 80%;">
+                    <small style="color: #666;">{msg['timestamp']}</small><br>
+                    <strong>Trader:</strong> {msg['message']}
+                </div>
+                """, unsafe_allow_html=True)
+
+            elif msg['type'] == 'player_response':
+                # Player's response
+                st.markdown(f"""
+                <div style="background-color: #d4edda; padding: 10px; border-radius: 10px; margin: 5px 0; max-width: 80%; margin-left: auto;">
+                    <small style="color: #666;">{msg['timestamp']}</small><br>
+                    <strong>You:</strong> Bid: ${msg['bid']:.2f} / Ask: ${msg['ask']:.2f}
+                </div>
+                """, unsafe_allow_html=True)
+
+            elif msg['type'] == 'market_response':
+                # Market response
+                color = "#d4edda" if msg['result'] in ['hit', 'lifted', 'both'] else "#f8d7da"
+                st.markdown(f"""
+                <div style="background-color: {color}; padding: 10px; border-radius: 10px; margin: 5px 0; max-width: 80%;">
+                    <small style="color: #666;">{msg['timestamp']}</small><br>
+                    <strong>Trader:</strong> {msg['message']}
+                </div>
+                """, unsafe_allow_html=True)
+
+    # Input section for pending quote
+    if st.session_state.pending_quote is not None:
+        st.markdown("---")
+        col1, col2, col3 = st.columns([2, 2, 1])
+
+        with col1:
+            bid_price = st.number_input("Your Bid ($)", min_value=0.0, step=0.05, format="%.2f",
+                                        key=f"bid_{st.session_state.pending_quote}")
+
+        with col2:
+            ask_price = st.number_input("Your Ask ($)", min_value=0.0, step=0.05, format="%.2f",
+                                        key=f"ask_{st.session_state.pending_quote}")
+
+        with col3:
+            st.markdown("<br>", unsafe_allow_html=True)  # Spacer
+            if st.button("Send Quote", type="primary", use_container_width=True):
+                if ask_price <= bid_price:
+                    st.error("Ask must be higher than Bid!")
+                else:
+                    # Add player response to chat
+                    add_player_response(st.session_state.pending_quote, bid_price, ask_price)
+
+                    # Here you would call your evaluation function
+                    # For example: result = evaluate_quote(st.session_state.pending_quote, bid_price, ask_price)
+                    # Then: add_market_response(st.session_state.pending_quote, result)
+
+                    st.rerun()
+    else:
+        st.info("No pending quote requests. Keep trading!")
+
+
+# Example usage:
+# To add a new quote request (call this when your random message is generated):
+# add_quote_request("Hi I need a dec26 90 put", quote_id="q_001")
+
+# To evaluate and respond (call this after your evaluation logic):
+# add_market_response("q_001", "hit")  # or "lifted", "pass", "both"
+
+# Render the chat interface
+render_quote_chat()
+
+# Example: Simulate adding a quote request (remove this in your actual implementation)
+if st.button("Simulate Quote Request (Demo)"):
+    import random
+
+    quote_id = f"q_{len(st.session_state.quote_chat_history)}"
+    messages = [
+        "Hi I need a dec26 90 put",
+        "Looking for 2 jan27 100 calls",
+        "Quote me 5 mar27 95 puts please"
+    ]
+    add_quote_request(random.choice(messages), quote_id)
+    st.rerun()
+
+
+
+
+
+
+
+
 
 with st.expander("💡 Example Interface"):
     req_col1, req_col2, req_col3 = st.columns(3)
@@ -847,7 +1001,7 @@ if show_history:
 # ============================================================================
 with st.expander("🧪 Manual Trading (Testing Only)"):
     test_col1, test_col2 = st.columns(2)
-    
+
     with test_col1:
         st.markdown("#### Buy/Sell Options")
         side = st.radio("Side", ["Long", "Short"], horizontal=True)
@@ -855,11 +1009,11 @@ with st.expander("🧪 Manual Trading (Testing Only)"):
         strike = st.number_input("Strike", value=100.0, step=5.0)
         days = st.slider("DTE", 1, 90, 30)
         qty = st.number_input("Quantity", min_value=1, value=1)
-        
+
         if st.button("Execute Trade"):
             price = black_scholes(st.session_state.stock.last_price, strike, days/365, 0.02, 0.3, option_type)
             cost = price * qty * 100
-            
+
             if side == "Long" and st.session_state.cash >= cost:
                 st.session_state.cash -= cost
                 st.session_state.positions.append({
