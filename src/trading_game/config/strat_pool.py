@@ -3,7 +3,7 @@ import random
 import numpy as np
 from typing import Literal
 
-from src.trading_game.config.settings import RF
+from trading_game.config.settings import RF
 
 STRATEGY_POOL = {
     'easy':[
@@ -18,21 +18,21 @@ STRATEGY_POOL = {
         {"name": "calendar_spread", "strike": 1, "maturity": 2, "call_moneyness": "atm", "option_type": 2},
         {"name": "risk_reversal_bullish", "strike": 2, "maturity": 1, "call_moneyness": "otm", "option_type": 1},
         {"name": "risk_reversal_bearish", "strike": 2, "maturity": 1, "call_moneyness": "itm", "option_type": 1},
-        {"name": "butterfly", "strike": 3, "maturity": 1, "call_moneyness": "otm", "option_type": 2}
+        {"name": "butterfly", "strike": 3, "maturity": 1, "call_moneyness": "atm", "option_type": 2}
     ]
 }
 
 RELATIVE_STRIKE_POOL = np.linspace(0.0, 0.25, 6)
 MATURITY_POOL = [1/12, 1/6, 1/4, 1/2, 3/4, 1, 2, 3, 4, 5]
 
-def get_random_strat(level: Literal['easy','hard']):
+def get_random_strat(level: Literal['easy','hard']) -> dict:
     return random.choice(STRATEGY_POOL[level])
 
 def generate_random_strat_data(level: Literal['easy', 'hard'],  price:float) -> tuple[str, dict]:
 
     # Choose strategy
     strategy = get_random_strat(level)
-    strat = {}
+    strat = dict()
 
     # Choose strike(s)
     if strategy["strike"] == 1:
@@ -44,7 +44,11 @@ def generate_random_strat_data(level: Literal['easy', 'hard'],  price:float) -> 
         strike = round(factor * price, 0)
         strat["k"] = strike
     elif strategy["call_moneyness"] == "atm":
-        strike_relative = random.choice(np.linspace(0.05, 0.15, 4))
+        if strategy["strike"] == 2:
+            strike_relative = random.choice(np.linspace(0.05, 0.15, 4))
+        else:
+            strike_relative = random.choice(np.linspace(0.05, 0.25, 4))
+            strat["k3"] = round(price, 0)
         strat["k1"] = round((1 - strike_relative) * price, 0)
         strat["k2"] = round((1 + strike_relative) * price, 0)
     else:
