@@ -3,7 +3,7 @@ from scipy.stats import norm
 from typing import Literal, List, Optional
 from pydantic import BaseModel, Field, model_validator
 
-from trading_game.config.strat_pool import generate_random_strat_data
+from src.trading_game.config.strat_pool import generate_random_strat_data
 
 # Vanilla Option Pricer using Black-Scholes Model
 class Option(BaseModel):
@@ -94,9 +94,8 @@ class Strategy(BaseModel):
         return cls(name="Strangle", options=opts)
 
     @classmethod
-    def calendar_spread(cls, k: float, t_short: float, t_long: float, r: float, option_type: Literal["call", "put"] = "call"):
-        if t_short >= t_long:
-            raise ValueError("t_short must be smaller than t_long for a calendar spread")
+    def calendar_spread(cls, k: float, t1: float, t2: float, r: float, option_type: Literal["call", "put"] = "call"):
+        t_short, t_long = (t1, t2) if t1 < t2 else (t2, t1)
 
         opts = [
             Option(K=k, T=t_long, r=r, option_type=option_type, position=+1),
@@ -105,9 +104,8 @@ class Strategy(BaseModel):
         return cls(name=f"{option_type.capitalize()} Calendar Spread", options=opts)
 
     @classmethod
-    def risk_reversal_bullish(cls, k_put: float, k_call: float, t: float, r: float):
-        if k_put >= k_call:
-            raise ValueError("For a bullish risk reversal, k_put < k_call is required.")
+    def risk_reversal_bullish(cls, k1: float, k2: float, t: float, r: float):
+        k_put, k_call = (k1, k2) if k1 < k2 else (k2, k1)
 
         opts = [
             Option(K=k_call, T=t, r=r, option_type="call", position=+1),
@@ -116,9 +114,8 @@ class Strategy(BaseModel):
         return cls(name="Bull Spread", options=opts)
 
     @classmethod
-    def risk_reversal_bearish(cls, k_put: float, k_call: float, t: float, r: float):
-        if k_put >= k_call:
-            raise ValueError("For a bearish risk reversal, k_put < k_call is required.")
+    def risk_reversal_bearish(cls, k1: float, k2: float, t: float, r: float):
+        k_put, k_call = (k1, k2) if k1 < k2 else (k2, k1)
 
         opts = [
             Option(K=k_put, T=t, r=r, option_type="put", position=+1), 
@@ -133,14 +130,15 @@ class Strategy(BaseModel):
 
         opts = [
             Option(K=k_low,  T=t, r=r, option_type=option_type, position=+1),
-            Option(K=k_mid,  T=t, r=r, option_type=option_type, position=-2),
+            Option(K=k_mid,  T=t, r=r, option_type=option_type, position=-1),
+            Option(K=k_mid,  T=t, r=r, option_type=option_type, position=-1),
             Option(K=k_high, T=t, r=r, option_type=option_type, position=+1),
         ]
         return cls(name=f"{option_type.capitalize()} Butterfly", options=opts)
 
     @staticmethod
-    def generate_random_strategy(level: Literal['easy', 'hard'], s: float, sigma: float):
-        random_strat_name, random_strat_data = generate_random_strat_data(level, s, sigma)
+    def generate_random_strategy(level: Literal['easy', 'hard'], s: float):
+        random_strat_name, random_strat_data = generate_random_strat_data(level, s)
         generation_method = getattr(Strategy, random_strat_name)
         return generation_method(**random_strat_data)
     
@@ -158,7 +156,8 @@ class Greeks(BaseModel):
     def _is_strategy(self) -> bool:
         return self.strategy is not None
 
-    def _calculate_single_option_greeks(self, option: Option, S: float, sigma: float) -> dict:
+    @staticmethod
+    def calculate_single_option_greeks(option: Option, S: float, sigma: float) -> dict:
         """
         Calculate Greeks for a single option
         Returns raw Greeks (not multiplied by position or quantity)
@@ -217,37 +216,37 @@ class Greeks(BaseModel):
     def delta(self, S: float, sigma: float) -> float:
         """Calculate total Delta"""
         if self._is_strategy():
-            return sum(self._calculate_single_option_greeks(opt, S, sigma)["delta"] for opt in self.strategy.options)
+            return sum(self.calculate_single_option_greeks(opt, S, sigma)["delta"] for opt in self.strategy.options)
         else:
-            return self._calculate_single_option_greeks(self.option, S, sigma)["delta"]
+            return self.calculate_single_option_greeks(self.option, S, sigma)["delta"]
     
     def gamma(self, S: float, sigma: float) -> float:
         """Calculate total Gamma"""
         if self._is_strategy():
-            return sum(self._calculate_single_option_greeks(opt, S, sigma)["gamma"] for opt in self.strategy.options)
+            return sum(self.calculate_single_option_greeks(opt, S, sigma)["gamma"] for opt in self.strategy.options)
         else:
-            return self._calculate_single_option_greeks(self.option, S, sigma)["gamma"]
+            return self.calculate_single_option_greeks(self.option, S, sigma)["gamma"]
     
     def vega(self, S: float, sigma: float) -> float:
         """Calculate total Vega"""
         if self._is_strategy():
-            return sum(self._calculate_single_option_greeks(opt, S, sigma)["vega"] for opt in self.strategy.options)
+            return sum(self.calculate_single_option_greeks(opt, S, sigma)["vega"] for opt in self.strategy.options)
         else:
-            return self._calculate_single_option_greeks(self.option, S, sigma)["vega"]
+            return self.calculate_single_option_greeks(self.option, S, sigma)["vega"]
     
     def theta(self, S: float, sigma: float) -> float:
         """Calculate total Theta"""
         if self._is_strategy():
-            return sum(self._calculate_single_option_greeks(opt, S, sigma)["theta"] for opt in self.strategy.options)
+            return sum(self.calculate_single_option_greeks(opt, S, sigma)["theta"] for opt in self.strategy.options)
         else:
-            return self._calculate_single_option_greeks(self.option, S, sigma)["theta"]
+            return self.calculate_single_option_greeks(self.option, S, sigma)["theta"]
     
     def rho(self, S: float, sigma: float) -> float:
         """Calculate total Rho"""
         if self._is_strategy():
-            return sum(self._calculate_single_option_greeks(opt, S, sigma)["rho"] for opt in self.strategy.options)
+            return sum(self.calculate_single_option_greeks(opt, S, sigma)["rho"] for opt in self.strategy.options)
         else:
-            return self._calculate_single_option_greeks(self.option, S, sigma)["rho"]
+            return self.calculate_single_option_greeks(self.option, S, sigma)["rho"]
 
     def all_greeks(self, S: float, sigma: float) -> dict:
         """ Calculate all Greeks at once """
@@ -264,7 +263,7 @@ class Greeks(BaseModel):
         if self._is_strategy():
             legs = []
             for idx, option in enumerate(self.strategy.options):
-                leg_greeks = self._calculate_single_option_greeks(option, S, sigma)
+                leg_greeks = self.calculate_single_option_greeks(option, S, sigma)
                 leg_info = {
                     "leg_index": idx,
                     "option_type": option.option_type.upper(),
@@ -281,7 +280,7 @@ class Greeks(BaseModel):
                 legs.append(leg_info)
             return legs
         else:
-            leg_greeks = self._calculate_single_option_greeks(self.option, S, sigma)
+            leg_greeks = self.calculate_single_option_greeks(self.option, S, sigma)
             leg_info = {
                 "leg_index": 0,
                 "option_type": self.option.option_type.upper(),
