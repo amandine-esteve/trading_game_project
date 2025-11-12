@@ -14,8 +14,12 @@ STRATEGY_POOL = {
         {"name": "call_spread", "strike": 2, "maturity": 1, "call_moneyness": "otm"},
         {"name": "put_spread", "strike": 2, "maturity": 1, "call_moneyness": "itm"},
         {"name": "straddle", "strike": 1, "maturity": 1, "call_moneyness": "atm"},
-        {"name": "strangle", "strike": 2, "maturity": 1, "call_moneyness": "atm"}
-        #calendar
+        {"name": "strangle", "strike": 2, "maturity": 1, "call_moneyness": "atm"},
+        {"name": "calendar_spread", "strike": 1, "maturity": 2, "call_moneyness": "atm"},
+        {"name": "risk_reversal_bull", "strike": 2, "maturity": 1, "call_moneyness": "otm"},
+        {"name": "risk_reversal_bear", "strike": 2, "maturity": 1, "call_moneyness": "itm"},
+        {"name": "butterfly_call", "strike": 3, "maturity": 1, "call_moneyness": "atm"},
+        {"name": "butterfly_put", "strike": 3, "maturity": 1, "call_moneyness": "atm"}
     ]
 }
 
@@ -28,7 +32,7 @@ def generate_random_strat_data(level: Literal['easy', 'hard'],  price:float, vol
 
     # Choose strategy
     strategy = get_random_strat(level)
-    strat = {"s": price}
+    strat = {}
 
     # Choose strike(s)
     if strategy["strike"] == 1:
@@ -55,7 +59,6 @@ def generate_random_strat_data(level: Literal['easy', 'hard'],  price:float, vol
     # Choose rest
     strat["t"] = random.choice([1/12, 1/6, 1/4, 1/2, 3/4, 1, 2, 3, 4, 5])
     strat["r"] = RF
-    strat["sigma"] = vol
 
     return strategy["name"], strat
 
