@@ -25,7 +25,7 @@ STRATEGY_POOL = {
 RELATIVE_STRIKE_POOL = np.linspace(0.0, 0.25, 6)
 MATURITY_POOL = [1/12, 1/6, 1/4, 1/2, 3/4, 1, 2, 3, 4, 5]
 
-def get_random_strat(level: Literal['easy','hard']):
+def get_random_strat(level: Literal['easy','hard']) -> dict:
     return random.choice(STRATEGY_POOL[level])
 
 def generate_random_strat_data(level: Literal['easy', 'hard'],  price:float) -> tuple[str, dict]:
