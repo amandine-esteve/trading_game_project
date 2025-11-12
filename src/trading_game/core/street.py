@@ -48,15 +48,14 @@ class Street(BaseModel):
 class QuoteRequest(BaseModel):
     investor: Investor
     level: Literal['easy', 'hard']
-    price: float
-    vol: float
+    init_price: float
     strat: Optional[Strategy] = None
     way: Optional[Literal['buy', 'sell']] = random.choice(['buy', 'sell'])
 
     @model_validator(mode="after")
     def set_strat(self):
         if self.strat is None:
-            self.strat = Strategy.generate_random_strategy(self.level, self.price, self.vol)
+            self.strat = Strategy.generate_random_strategy(self.level, self.init_price)
         return self
 
     @staticmethod
@@ -107,11 +106,11 @@ class QuoteRequest(BaseModel):
         message += f"{name.lower()}?"
         return message
 
-    def evaluate_bid_ask(self, bid: float, ask: float) -> bool:
-        mid = self.strat.price()
+    def evaluate_bid_ask(self, bid: float, ask: float, price: float, vol: float) -> bool:
+        mid = self.strat.price(price, vol)
         if self.way=='buy' and ask <= mid + 0.5 * self.investor.width_tolerance:
             return True
-        elif self.way=='sell' and bid>=mid - 0.5 * self.investor.width_tolerance:
+        elif self.way=='sell' and bid >= mid - 0.5 * self.investor.width_tolerance:
             return True
         return False
 
