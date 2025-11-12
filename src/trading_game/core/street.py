@@ -97,7 +97,7 @@ class QuoteRequest(BaseModel):
         sorted_strikes.sort()
         strikes = [str(k) for k in sorted_strikes]
         message = f"{self.investor.company} [{self.investor.name}]: Hi could I pls get a quote for a "
-        message += f"{maturities[0]} " if len(maturities)==1 else f"{'-'.join(maturities)}"
+        message += f"{maturities[0]} " if len(maturities)==1 else f"{'-'.join(maturities)} "
         message += f"{strikes[0]} " if len(strikes)==1 else f"{'-'.join(strikes)} "
         message += f"{name.lower()} in "
         message += f"{int(self.quantity/1_000)}k?" if self.quantity<1_000_000 else f"{int(self.quantity/1_000_000)}m?"

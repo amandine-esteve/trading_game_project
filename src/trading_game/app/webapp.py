@@ -8,7 +8,8 @@ from scipy.stats import norm
 from streamlit_autorefresh import st_autorefresh
 
 from trading_game.config.settings import REFRESH_INTERVAL
-from trading_game.utils.app_utils import create_stock #, create_street, create_quote_request
+from trading_game.utils.app_utils import create_stock, create_street
+from trading_game.core.street import QuoteRequest
 
 # ============================================================================
 # PAGE CONFIG - Dark Theme
@@ -173,11 +174,7 @@ div[data-testid="stMetricLabel"] { color: white !important; }
 if 'initialized' not in st.session_state:
     st.session_state.initialized = True
     st.session_state.stock = create_stock()
-    # st.session_state.street = create_street()
-    st.session_state.nb_qr = 0
-    # st.session_state.current_price = 100.0
-    # st.session_state.price_history = [100.0]
-    # st.session_state.time_history = [datetime.now()]
+    st.session_state.street = create_street()
     st.session_state.cash = 100000.0
     st.session_state.starting_cash = 100000.0
     st.session_state.positions = []
@@ -251,14 +248,6 @@ def get_bid_ask_spread(option_price, volatility=0.3):
     bid = option_price - spread/2
     ask = option_price + spread/2
     return bid, ask
-
-# def simulate_price_movement(current_price, dt=1/252, mu=0.05, sigma=0.3):
-#     """GBM simulation"""
-#     shock = np.random.normal(0, 1)
-#     drift = (mu - 0.5 * sigma ** 2) * dt
-#     diffusion = sigma * np.sqrt(dt) * shock
-#     new_price = current_price * np.exp(drift + diffusion)
-#     return new_price
 
 # ============================================================================
 # RISK CALCULATIONS
@@ -337,9 +326,6 @@ if not st.session_state.trading_paused and not st.session_state.game_over:
         st.session_state.game_over = True
     else:
         st.session_state.stock.move_price()
-        # st.session_state.current_price = simulate_price_movement(st.session_state.current_price)
-        # st.session_state.price_history.append(st.session_state.current_price)
-        # st.session_state.time_history.append(datetime.now())
         st.session_state.tick_count += 1
 
         total_pnl = calculate_total_portfolio_value() - st.session_state.starting_cash
@@ -775,25 +761,18 @@ st.divider()
 # ============================================================================
 # CLIENT REQUESTS
 # ============================================================================
-# st.markdown('<a id="clients"></a>', unsafe_allow_html=True)
-# st.header("📞 Client Requests")
-# st.info("🔌 **PLACEHOLDER** - Section pour brancher le code de génération des requests clients")
-
-# if st.session_state.tick_count>3 and "quote_request" not in st.session_state:
-#     investor = random.choice(st.session_state.street.investors)
-#     st.session_state.quote_request = create_quote_request(st.session_state.nb_qr, investor, st.session_state.stock.last_price)
-#     print(st.session_state.quote_request.nb)
-# if "quote_request" in st.session_state and st.session_state.quote_request.state.value=="Initialized":
-#     print(st.session_state.quote_request.nb)
-#     st.write(st.session_state.quote_request._generate_message())
-
+st.markdown('<a id="clients"></a>', unsafe_allow_html=True)
+st.header("📞 Client Requests")
 
 # Initialize session state for chat history
 if 'quote_chat_history' not in st.session_state:
-    st.session_state.quote_chat_history = []
-
+    st.session_state.quote_chat_history = list()
 if 'pending_quote' not in st.session_state:
     st.session_state.pending_quote = None
+if 'last_quote_tick' not in st.session_state:
+    st.session_state.last_quote_tick = 0
+if 'quote_cleared_tick' not in st.session_state:
+    st.session_state.quote_cleared_tick = -999
 
 
 def add_quote_request(message, quote_id):
@@ -818,64 +797,42 @@ def add_player_response(quote_id, bid, ask):
     })
 
 
-def add_market_response(quote_id, result, action=None):
-    """
-    Add market response to the chat
-    result: 'hit', 'lifted', 'pass', or 'both'
-    action: optional details like 'bought at your bid' or 'sold at your ask'
-    """
-    messages = {
-        'hit': f"Done! Bought at your bid. {action or ''}",
-        'lifted': f"Done! Sold at your ask. {action or ''}",
-        'both': f"Done! Traded both sides. {action or ''}",
-        'pass': "Pass, thanks anyway."
-    }
-
+def add_market_response(quote_id, final_answer):
     st.session_state.quote_chat_history.append({
         'type': 'market_response',
         'quote_id': quote_id,
-        'result': result,
-        'message': messages.get(result, action or "No action taken."),
+        'message': final_answer,
         'timestamp': datetime.now().strftime("%H:%M:%S")
     })
     st.session_state.pending_quote = None
+    st.session_state.quote_cleared_tick = st.session_state.tick_count
+    st.session_state.pending_quote = None
 
+def clear_chat():
+    """Clear the chat history"""
+    st.session_state.quote_chat_history = list()
 
 def render_quote_chat():
-    """Render the quote request chat interface"""
-    st.subheader("💬 Quote Requests")
-
     # Chat container with custom styling
     chat_container = st.container()
 
     with chat_container:
         # Display chat history
         for msg in st.session_state.quote_chat_history:
-            if msg['type'] == 'request':
+            if msg['type'] == 'request' or msg['type']=='market_response':
                 # Quote request from market
                 st.markdown(f"""
-                <div style="background-color: #f0f2f6; padding: 10px; border-radius: 10px; margin: 5px 0; max-width: 80%;">
+                <div style="background-color: #d0d4db; padding: 10px; border-radius: 10px; margin: 5px 0; max-width: 80%;">
                     <small style="color: #666;">{msg['timestamp']}</small><br>
                     <strong>Trader:</strong> {msg['message']}
                 </div>
                 """, unsafe_allow_html=True)
-
             elif msg['type'] == 'player_response':
                 # Player's response
                 st.markdown(f"""
-                <div style="background-color: #d4edda; padding: 10px; border-radius: 10px; margin: 5px 0; max-width: 80%; margin-left: auto;">
+                <div style="background-color: #a8d5a8; padding: 10px; border-radius: 10px; margin: 5px 0; max-width: 80%; margin-left: auto;">
                     <small style="color: #666;">{msg['timestamp']}</small><br>
                     <strong>You:</strong> Bid: ${msg['bid']:.2f} / Ask: ${msg['ask']:.2f}
-                </div>
-                """, unsafe_allow_html=True)
-
-            elif msg['type'] == 'market_response':
-                # Market response
-                color = "#d4edda" if msg['result'] in ['hit', 'lifted', 'both'] else "#f8d7da"
-                st.markdown(f"""
-                <div style="background-color: {color}; padding: 10px; border-radius: 10px; margin: 5px 0; max-width: 80%;">
-                    <small style="color: #666;">{msg['timestamp']}</small><br>
-                    <strong>Trader:</strong> {msg['message']}
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -900,61 +857,82 @@ def render_quote_chat():
                 else:
                     # Add player response to chat
                     add_player_response(st.session_state.pending_quote, bid_price, ask_price)
-
-                    # Here you would call your evaluation function
-                    # For example: result = evaluate_quote(st.session_state.pending_quote, bid_price, ask_price)
-                    # Then: add_market_response(st.session_state.pending_quote, result)
+                    # Evaluate response
+                    result = st.session_state.quote_request.evaluate_bid_ask(bid_price, ask_price, st.session_state.stock.last_price, st.session_state.stock.vol)
+                    st.session_state.result = result
+                    final_answer = st.session_state.quote_request.generate_response_message(result)
+                    # Add market response to chat
+                    add_market_response(st.session_state.pending_quote, final_answer)
 
                     st.rerun()
     else:
         st.info("No pending quote requests. Keep trading!")
 
 
-# Example usage:
-# To add a new quote request (call this when your random message is generated):
-# add_quote_request("Hi I need a dec26 90 put", quote_id="q_001")
+# Initialize session state variables for quote requests
+if "quote_request" not in st.session_state:
+    st.session_state.quote_request = None
+if "quote_request_history" not in st.session_state:
+    st.session_state.quote_request_history = list()
+if "result" not in st.session_state:
+    st.session_state.result = None
 
-# To evaluate and respond (call this after your evaluation logic):
-# add_market_response("q_001", "hit")  # or "lifted", "pass", "both"
 
-# Render the chat interface
+# Quote request management based on tick_count
+def manage_quote_requests(current_tick):
+    """
+    Manages the timing of quote requests
+    current_tick: the current tick count from st.session_state.tick_count
+    """
+
+    # Clear chat one tick after market response
+    if current_tick == st.session_state.quote_cleared_tick + 2:
+        clear_chat()
+
+        # Process result if exists (add trade to book)
+        if st.session_state.result:
+            # Add trade to book here
+            pass
+
+        # Reset for next quote
+        st.session_state.quote_request = None
+        st.session_state.result = None
+
+    # Check if it's time for a new quote request
+    # First quote at tick 3, then every 3 ticks after previous quote
+    if current_tick == 3 and st.session_state.last_quote_tick == 0:
+        # First quote request
+        investor = random.choice(st.session_state.street.investors)
+        level = 'easy' if len(st.session_state.quote_request_history) <= 3 else 'hard'
+        quote_request = QuoteRequest(investor=investor, level=level, init_price=st.session_state.stock.last_price)
+        st.session_state.quote_request = quote_request
+        st.session_state.quote_request_history.append(quote_request)
+
+        quote_id = f"q_{current_tick}"
+        message = quote_request.generate_request_message()
+        add_quote_request(message, quote_id)
+        st.session_state.last_quote_tick = current_tick
+
+    elif (st.session_state.quote_cleared_tick > 0 and
+          current_tick == st.session_state.quote_cleared_tick + 3):
+        # New quote request 3 ticks after the last one was cleared
+        investor = random.choice(st.session_state.street.investors)
+        level = 'easy' if len(st.session_state.quote_request_history) <= 3 else 'hard'
+        quote_request = QuoteRequest(investor=investor, level=level, init_price=st.session_state.stock.last_price)
+        st.session_state.quote_request = quote_request
+        st.session_state.quote_request_history.append(quote_request)
+
+        quote_id = f"q_{current_tick}"
+        message = quote_request.generate_request_message()
+        add_quote_request(message, quote_id)
+        st.session_state.last_quote_tick = current_tick
+
+
+# Manage quote requests based on current tick
+if 'tick_count' in st.session_state:
+    manage_quote_requests(st.session_state.tick_count)
+
 render_quote_chat()
-
-# Example: Simulate adding a quote request (remove this in your actual implementation)
-if st.button("Simulate Quote Request (Demo)"):
-    import random
-
-    quote_id = f"q_{len(st.session_state.quote_chat_history)}"
-    messages = [
-        "Hi I need a dec26 90 put",
-        "Looking for 2 jan27 100 calls",
-        "Quote me 5 mar27 95 puts please"
-    ]
-    add_quote_request(random.choice(messages), quote_id)
-    st.rerun()
-
-
-
-
-
-
-
-
-
-with st.expander("💡 Example Interface"):
-    req_col1, req_col2, req_col3 = st.columns(3)
-    with req_col1:
-        st.markdown("**Client Request #1**")
-        st.write("Type: Call Spread")
-        st.write("Strikes: 100/110")
-        st.write("Quantity: 50")
-    with req_col2:
-        st.write("**Your Quote:**")
-        st.write("Bid: $X.XX")
-        st.write("Ask: $X.XX")
-    with req_col3:
-        st.button("Accept Bid", type="primary")
-        st.button("Accept Ask")
 
 st.divider()
 
@@ -972,9 +950,6 @@ with control_col1:
 
 with control_col2:
     if st.button("🔄 Reset Game", use_container_width=True, type= "primary"):
-        #st.session_state.last_price = 100.0
-        #st.session_state.price_history = [100.0]
-        #st.session_state.time_history = [datetime.now()]
         st.session_state.cash = 100000.0
         st.session_state.starting_cash = 100000.0
         st.session_state.positions = []
