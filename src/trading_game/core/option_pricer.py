@@ -3,7 +3,7 @@ from scipy.stats import norm
 from typing import Literal, List, Optional
 from pydantic import BaseModel, Field, model_validator
 
-from src.trading_game.config.strat_pool import generate_random_strat_data
+from trading_game.config.strat_pool import generate_random_strat_data
 
 # Vanilla Option Pricer using Black-Scholes Model
 class Option(BaseModel):

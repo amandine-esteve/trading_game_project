@@ -3,7 +3,7 @@ import random
 import numpy as np
 from typing import Literal
 
-from src.trading_game.config.settings import RF
+from trading_game.config.settings import RF
 
 STRATEGY_POOL = {
     'easy':[
