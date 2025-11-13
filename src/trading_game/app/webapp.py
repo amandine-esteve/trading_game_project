@@ -36,6 +36,24 @@ st.markdown("""
     color: #ffffff !important;
 }
 
+/* ---------- Sidebar Header Background ---------- */
+[data-testid="stSidebarHeader"] {
+    background-color: #0e1117 !important;
+}
+
+/* ---------- Sidebar Background ---------- */
+
+[data-testid="stSidebar"] {
+    background-color: #0e1117 !important;
+}
+
+/* ---------- Sidebar Navigation Title ---------- */
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 {
+    color: #ffffff !important;
+}
+
 /* ---------- Sidebar / Navigation Links ---------- */
 .nav-link {
     display: block;
@@ -155,8 +173,6 @@ div[data-testid="stInfo"] {
     position: absolute;
     top: 0;
 }
-
-/* ========== NOUVEAU: FIX POUR TABS ET MANUAL TRADING ========== */
 
 /* ---------- Tabs: Style général ---------- */
 .stTabs [data-baseweb="tab-list"] {
