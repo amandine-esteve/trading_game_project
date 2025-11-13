@@ -10,6 +10,8 @@ from streamlit_autorefresh import st_autorefresh
 from trading_game.config.settings import REFRESH_INTERVAL
 from trading_game.utils.app_utils import create_stock, create_street
 from trading_game.core.street import QuoteRequest
+from trading_game.core.book import Book
+from trading_game.core.option_pricer import Strategy, Greeks
 
 # ============================================================================
 # PAGE CONFIG - Dark Theme
@@ -175,6 +177,7 @@ if 'initialized' not in st.session_state:
     st.session_state.initialized = True
     st.session_state.stock = create_stock()
     st.session_state.street = create_street()
+    st.session_state.book = Book()
     st.session_state.cash = 100000.0
     st.session_state.starting_cash = 100000.0
     st.session_state.positions = []
@@ -238,16 +241,6 @@ def calculate_greeks(S, K, T, r, sigma, option_type='call'):
     theta = -(S * norm.pdf(d1) * sigma) / (2 * np.sqrt(T)) / 365
 
     return {'delta': delta, 'gamma': gamma, 'theta': theta, 'vega': vega}
-
-def get_bid_ask_spread(option_price, volatility=0.3):
-    """
-    PLACEHOLDER - À remplacer par votre fonction de spread
-    Retourne (bid, ask) basé sur le mid price
-    """
-    spread = option_price * 0.02
-    bid = option_price - spread/2
-    ask = option_price + spread/2
-    return bid, ask
 
 # ============================================================================
 # RISK CALCULATIONS
@@ -752,6 +745,14 @@ with hedge_col3:
 
             st.session_state.cash -= futures_cost
             st.success(f"Hedge executed! New position: {st.session_state.futures_position:+.0f}")
+
+            # ADD TRADE TO BOOK
+            trade_id = st.session_state.book.add_trade_stock(
+            st.session_state.stock,
+            futures_qty,
+            st.session_state.stock.last_price,
+            st.session_state.stock.vol)   
+
             st.rerun()
         else:
             st.error("Insufficient cash for transaction cost!")
@@ -804,7 +805,15 @@ def add_market_response(quote_id, final_answer):
         'message': final_answer,
         'timestamp': datetime.now().strftime("%H:%M:%S")
     })
-    st.session_state.pending_quote = None
+
+    # Process result if exists (add trade to book)
+    if st.session_state.result:
+        st.session_state.book.add_trade_strategy(
+            st.session_state.quote_request.strat,
+            st.session_state.quote_request.quantity,
+            st.session_state.stock.last_price,
+            st.session_state.stock.vol)  # check if right spot ref
+
     st.session_state.quote_cleared_tick = st.session_state.tick_count
     st.session_state.pending_quote = None
 
@@ -888,11 +897,6 @@ def manage_quote_requests(current_tick):
     # Clear chat one tick after market response
     if current_tick == st.session_state.quote_cleared_tick + 2:
         clear_chat()
-
-        # Process result if exists (add trade to book)
-        if st.session_state.result:
-            # Add trade to book here
-            pass
 
         # Reset for next quote
         st.session_state.quote_request = None
