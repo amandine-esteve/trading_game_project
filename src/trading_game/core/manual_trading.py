@@ -4,12 +4,6 @@ from enum import Enum
 from datetime import datetime
 import time
 
-# Imports depuis tes modules existants
-# from trading_game.pricer import Option, Strategy
-# from trading_game.market import Stock
-# from trading_game.book import Book
-
-
 class OrderSide(Enum):
     BUY = "Buy"
     SELL = "Sell"
@@ -83,7 +77,7 @@ class VanillaOrder(Order):
     strike: float = Field(..., gt=0, description="Strike must be > 0")
     maturity: float = Field(..., gt=0, description="Maturity in years, must be > 0")
     spot_price: float = Field(..., gt=0, description="Underlying spot price")
-    volatility: float = Field(..., gt=0, description="Implied volatility")
+    volatility: float = Field(..., gt=0, description="Implied vol")
     risk_free_rate: float
     limit_price: Optional[float] = None
 
@@ -114,7 +108,7 @@ class StrategyOrder(Order):
     strikes: List[float] = Field(..., description="List of strikes for the strategy")
     maturity: float = Field(..., gt=0, description="Maturity in years")
     spot_price: float = Field(..., gt=0, description="Underlying spot price")
-    volatility: float = Field(..., gt=0, description="Implied volatility")
+    volatility: float = Field(..., gt=0, description="Implied vol")
     risk_free_rate: float
     limit_price: Optional[float] = None
     net_premium: Optional[float] = None
@@ -126,7 +120,7 @@ class StrategyOrder(Order):
             if len(self.strikes) != 2:
                 raise ValueError(f"{self.strategy_type.value} requires exactly 2 strikes")
             if self.strikes[0] >= self.strikes[1]:
-                raise ValueError("First strike must be less than second strike")
+                raise ValueError("First strike must be smaller than second strike")
         
         elif self.strategy_type == StrategyType.STRADDLE:
             if len(self.strikes) != 1:
@@ -151,7 +145,7 @@ class StrategyOrder(Order):
         # For limit orders
         if self.side == OrderSide.BUY:
             return market_price <= self.limit_price
-        else:  # SELL
+        else:  
             return market_price >= self.limit_price
 
 
@@ -239,7 +233,7 @@ class OrderExecutor(BaseModel):
         
         elif order.strategy_type == StrategyType.STRADDLE:
             strat = strategy_class.straddle(
-                K=order.strikes[0],
+                k=order.strikes[0],
                 t=order.maturity,
                 r=order.risk_free_rate,
             )
