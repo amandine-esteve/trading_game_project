@@ -10,6 +10,8 @@ from streamlit_autorefresh import st_autorefresh
 from trading_game.config.settings import REFRESH_INTERVAL
 from trading_game.utils.app_utils import create_stock, create_street
 from trading_game.core.street import QuoteRequest
+from trading_game.core.book import Book
+from trading_game.core.option_pricer import Strategy, Greeks
 
 # ============================================================================
 # PAGE CONFIG - Dark Theme
@@ -185,6 +187,7 @@ if 'initialized' not in st.session_state:
     st.session_state.tick_count = 0
     st.session_state.game_over = False
     st.session_state.trading_paused = False
+    st.session_state.book = Book()
 
 # CRITICAL: Initialize new attributes for existing sessions
 if 'game_duration' not in st.session_state:
@@ -238,16 +241,6 @@ def calculate_greeks(S, K, T, r, sigma, option_type='call'):
     theta = -(S * norm.pdf(d1) * sigma) / (2 * np.sqrt(T)) / 365
 
     return {'delta': delta, 'gamma': gamma, 'theta': theta, 'vega': vega}
-
-def get_bid_ask_spread(option_price, volatility=0.3):
-    """
-    PLACEHOLDER - À remplacer par votre fonction de spread
-    Retourne (bid, ask) basé sur le mid price
-    """
-    spread = option_price * 0.02
-    bid = option_price - spread/2
-    ask = option_price + spread/2
-    return bid, ask
 
 # ============================================================================
 # RISK CALCULATIONS
@@ -752,6 +745,14 @@ with hedge_col3:
 
             st.session_state.cash -= futures_cost
             st.success(f"Hedge executed! New position: {st.session_state.futures_position:+.0f}")
+
+            # ADD TRADE TO BOOK
+            trade_id = st.session_state.book.add_trade_stock(
+            st.session_state.stock,
+            futures_qty,
+            st.session_state.stock.last_price,
+            st.session_state.stock.vol)   
+
             st.rerun()
         else:
             st.error("Insufficient cash for transaction cost!")
