@@ -252,15 +252,25 @@ label[data-testid="stWidgetLabel"] {
     border-color: #2e3444 !important;
 }
 
-/* ---------- Number Input ---------- */
-[data-baseweb="input"] {
-    background-color: #1e2130 !important;
-    color: #ffffff !important;
-    border-color: #2e3444 !important;
+/* ---------- Input Text Color ---------- */
+[data-baseweb="input"] input {
+    color: #0e1117 !important;
 }
 
-[data-baseweb="input"] input {
-    color: #ffffff !important;
+/* Number input text */
+[data-baseweb="base-input"] input {
+    color: #0e1117 !important;
+}
+
+/* Text input */
+input[type="text"],
+input[type="number"] {
+    color: #0e1117 !important;
+}
+
+/* Textarea */
+textarea {
+    color: #0e1117   !important;
 }
 
 /* ---------- Slider ---------- */
