@@ -177,6 +177,7 @@ if 'initialized' not in st.session_state:
     st.session_state.initialized = True
     st.session_state.stock = create_stock()
     st.session_state.street = create_street()
+    st.session_state.book = Book()
     st.session_state.cash = 100000.0
     st.session_state.starting_cash = 100000.0
     st.session_state.positions = []
@@ -187,7 +188,6 @@ if 'initialized' not in st.session_state:
     st.session_state.tick_count = 0
     st.session_state.game_over = False
     st.session_state.trading_paused = False
-    st.session_state.book = Book()
 
 # CRITICAL: Initialize new attributes for existing sessions
 if 'game_duration' not in st.session_state:
@@ -805,7 +805,15 @@ def add_market_response(quote_id, final_answer):
         'message': final_answer,
         'timestamp': datetime.now().strftime("%H:%M:%S")
     })
-    st.session_state.pending_quote = None
+
+    # Process result if exists (add trade to book)
+    if st.session_state.result:
+        st.session_state.book.add_trade_strategy(
+            st.session_state.quote_request.strat,
+            st.session_state.quote_request.quantity,
+            st.session_state.stock.last_price,
+            st.session_state.stock.vol)  # check if right spot ref
+
     st.session_state.quote_cleared_tick = st.session_state.tick_count
     st.session_state.pending_quote = None
 
@@ -889,11 +897,6 @@ def manage_quote_requests(current_tick):
     # Clear chat one tick after market response
     if current_tick == st.session_state.quote_cleared_tick + 2:
         clear_chat()
-
-        # Process result if exists (add trade to book)
-        if st.session_state.result:
-            # Add trade to book here
-            pass
 
         # Reset for next quote
         st.session_state.quote_request = None
