@@ -13,6 +13,12 @@ from trading_game.core.street import QuoteRequest
 from trading_game.core.book import Book
 from trading_game.core.option_pricer import Strategy, Greeks
 
+from trading_game.core.manual_trading import (
+    OrderExecutor, VanillaOrder, StrategyOrder,
+    OrderSide, OrderType, StrategyType, OrderStatus
+)
+from trading_game.core.option_pricer import Option, Strategy
+
 # ============================================================================
 # PAGE CONFIG - Dark Theme
 # ============================================================================
@@ -21,14 +27,13 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
 # Custom CSS for dark theme
 st.markdown("""
 <style>
 /* ---------- App Background & Global Text ---------- */
 .stApp {
     background-color: #0e1117;
-    color: #ffffff !important;  /* Make all text white */
+    color: #ffffff !important;
 }
 
 /* ---------- Sidebar / Navigation Links ---------- */
@@ -39,7 +44,7 @@ st.markdown("""
     background-color: #1e2130;
     border-radius: 5px;
     text-decoration: none;
-    color: white; /* text white */
+    color: white;
     text-align: center;
     transition: background-color 0.3s;
 }
@@ -55,17 +60,14 @@ st.markdown("""
     border: 1px solid #2e3444;
 }
 
-/* Metric titles (labels) */
 div[data-testid="stMetricLabel"] {
     color: white !important;
 }
-/* Metric values (numbers) */
 div[data-testid="stMetricValue"] {
     color: white !important;
     font-weight: bold;
     font-size: 28px;
 }
-/* Metric delta values */
 div[data-testid="stMetricDelta"] {
     color: white !important;
 }
@@ -77,8 +79,8 @@ div[data-testid="stMetricDelta"] {
 
 /* ---------- Buttons ---------- */
 .stButton>button {
-    background-color: #ff4444 !important; /* red button background */
-    color: white !important;               /* white text */
+    background-color: #ff4444 !important;
+    color: white !important;
     font-weight: bold;
     border-radius: 5px;
 }
@@ -86,7 +88,6 @@ div[data-testid="stMetricDelta"] {
     background-color: #ff6666 !important;
 }
 
-/* Make control buttons less aggressive: secondary style */
 .stButton.secondary>button {
     background-color: #1e2130 !important;
     color: white !important;
@@ -98,11 +99,9 @@ div[data-testid="stMetricDelta"] {
 }
 
 /* ---------- Checkbox ---------- */
-/* Tick color when checked */
 [data-baseweb="checkbox"] input:checked + div {
-    background-color: #ff4444 !important;  /* red tick */
+    background-color: #ff4444 !important;
 }
-/* Checkbox label text */
 [data-baseweb="checkbox"] label {
     color: white !important;
 }
@@ -141,12 +140,6 @@ div[data-testid="stInfo"] {
     color: #ffffff !important;
 }
 
-/* ---------- Metric Progress Labels ---------- */
-div[data-testid="stMetricValue"] { color: white !important; font-weight: bold; }
-div[data-testid="stMetricDelta"] { color: white !important; }
-div[data-testid="stMetricLabel"] { color: white !important; }
-
-
 /* ---------- Risk Bars (Delta, Gamma, Vega, Theta) ---------- */
 .risk-bar-container {
     position: relative;
@@ -162,17 +155,163 @@ div[data-testid="stMetricLabel"] { color: white !important; }
     position: absolute;
     top: 0;
 }
-   
+
+/* ========== NOUVEAU: FIX POUR TABS ET MANUAL TRADING ========== */
+
+/* ---------- Tabs: Style général ---------- */
+.stTabs [data-baseweb="tab-list"] {
+    background-color: #1e2130 !important;
+    gap: 5px;
+    padding: 5px;
+    border-radius: 8px;
+}
+
+/* Tabs non sélectionnées */
+.stTabs [data-baseweb="tab-list"] button {
+    background-color: #2e3444 !important;
+    color: #ffffff !important;
+    border-radius: 5px;
+    padding: 10px 20px;
+    font-weight: 500;
+    border: none;
+}
+
+/* Tabs au hover */
+.stTabs [data-baseweb="tab-list"] button:hover {
+    background-color: #3e4454 !important;
+    color: #ffffff !important;
+}
+
+/* Tab sélectionnée */
+.stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
+    background-color: #ff4444 !important;
+    color: #ffffff !important;
+    font-weight: bold;
+    border-bottom: 3px solid #ff6666;
+}
+
+/* Texte dans les tabs */
+.stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
+    color: #ffffff !important;
+    font-size: 16px;
+    margin: 0;
+}
+
+/* Contenu des tabs */
+.stTabs [data-baseweb="tab-panel"] {
+    background-color: #1e2130 !important;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 10px;
+}
+
+/* ---------- Labels des inputs ---------- */
+label[data-testid="stWidgetLabel"] {
+    color: #ffffff !important;
+    font-weight: 500;
+}
+
+/* ---------- Radio buttons ---------- */
+.stRadio > label {
+    color: #ffffff !important;
+}
+
+.stRadio [data-baseweb="radio"] > div {
+    color: #ffffff !important;
+}
+
+/* Radio button sélectionné */
+[data-baseweb="radio"] input:checked + div {
+    background-color: #ff4444 !important;
+}
+
+/* ---------- Selectbox ---------- */
+[data-baseweb="select"] {
+    color: #ffffff !important;
+}
+
+[data-baseweb="select"] > div {
+    background-color: #1e2130 !important;
+    color: #ffffff !important;
+    border-color: #2e3444 !important;
+}
+
+/* ---------- Number Input ---------- */
+[data-baseweb="input"] {
+    background-color: #1e2130 !important;
+    color: #ffffff !important;
+    border-color: #2e3444 !important;
+}
+
+[data-baseweb="input"] input {
+    color: #ffffff !important;
+}
+
+/* ---------- Slider ---------- */
+[data-baseweb="slider"] {
+    color: #ffffff !important;
+}
+
+[data-baseweb="slider"] [role="slider"] {
+    background-color: #ff4444 !important;
+}
+
+/* ---------- Expander header plus visible ---------- */
+.streamlit-expanderHeader {
+    background-color: #1e2130 !important;
+    color: #ffffff !important;
+    font-size: 18px !important;
+    font-weight: bold !important;
+    border: 1px solid #2e3444;
+    border-radius: 5px;
+}
+
+.streamlit-expanderHeader:hover {
+    background-color: #2e3444 !important;
+}
+
+/* ---------- Success/Error messages ---------- */
+.stSuccess {
+    background-color: #0e7a0e !important;
+    color: #ffffff !important;
+    border: 1px solid #00ff88 !important;
+}
+
+.stError {
+    background-color: #a51c30 !important;
+    color: #ffffff !important;
+    border: 1px solid #ff4444 !important;
+}
+
+.stInfo {
+    background-color: #1e3a5f !important;
+    color: #ffffff !important;
+    border: 1px solid #4a90e2 !important;
+}
+
+/* ---------- Markdown headings dans manual trading ---------- */
+.stMarkdown h4, .stMarkdown h3, .stMarkdown h2 {
+    color: #ffffff !important;
+    font-weight: bold;
+}
+
+.stMarkdown p {
+    color: #ffffff !important;
+}
+
+/* ---------- Divider plus visible ---------- */
+hr {
+    border-color: #2e3444 !important;
+    margin: 20px 0;
+}
 
 </style>
-
-
 """, unsafe_allow_html=True)
-
 
 # ============================================================================
 # INITIALIZE SESSION STATE FIRST (before auto-refresh!)
 # ============================================================================
+
 if 'initialized' not in st.session_state:
     st.session_state.initialized = True
     st.session_state.stock = create_stock()
@@ -202,6 +341,10 @@ if 'trading_paused' not in st.session_state:
 # Auto-refresh (AFTER initialization)
 if not st.session_state.trading_paused and not st.session_state.game_over:
     count = st_autorefresh(interval=REFRESH_INTERVAL, key="price_refresh")
+
+# Intialize Order Executor
+if 'order_executor' not in st.session_state:
+    st.session_state.order_executor = OrderExecutor(max_position_size=1000)
 
 # ============================================================================
 # PRICING FUNCTIONS (Placeholders pour votre pricer)
@@ -253,20 +396,45 @@ def calculate_portfolio_greeks():
     total_theta = 0
 
     for pos in st.session_state.positions:
-        greeks = calculate_greeks(
-            st.session_state.stock.last_price,
-            pos['strike'],
-            pos['time_to_expiry'],
-            0.02,
-            0.3,
-            pos['type']
-        )
+        # Cas 1 : vanilla option avec une seule strike
+        if 'strike' in pos:
+            greeks = calculate_greeks(
+                st.session_state.stock.last_price,
+                pos['strike'],
+                pos['time_to_expiry'],
+                0.02,
+                0.3,
+                pos['type']
+            )
 
-        multiplier = pos['quantity'] * 100 * pos['side']
-        total_delta += greeks['delta'] * multiplier
-        total_gamma += greeks['gamma'] * multiplier
-        total_vega += greeks['vega'] * multiplier
-        total_theta += greeks['theta'] * multiplier
+            multiplier = pos['quantity'] * 100 * pos['side']
+            total_delta += greeks['delta'] * multiplier
+            total_gamma += greeks['gamma'] * multiplier
+            total_vega += greeks['vega'] * multiplier
+            total_theta += greeks['theta'] * multiplier
+
+        # Cas 2 : structure à plusieurs strikes (ex: call spread)
+        elif 'strikes' in pos:
+            strikes = pos['strikes']
+            weights = pos.get('weights', [1/len(strikes)] * len(strikes))  # pondération éventuelle
+            for strike, weight in zip(strikes, weights):
+                greeks = calculate_greeks(
+                    st.session_state.stock.last_price,
+                    strike,
+                    pos['time_to_expiry'],
+                    0.02,
+                    0.3,
+                    pos['type']
+                )
+
+                multiplier = pos['quantity'] * 100 * pos['side'] * weight
+                total_delta += greeks['delta'] * multiplier
+                total_gamma += greeks['gamma'] * multiplier
+                total_vega += greeks['vega'] * multiplier
+                total_theta += greeks['theta'] * multiplier
+
+        else:
+            print(f"⚠️ Position sans strike(s) détectée : {pos}")
 
     return {
         'delta': total_delta,
@@ -280,16 +448,67 @@ def calculate_total_portfolio_value():
     total = st.session_state.cash
 
     for pos in st.session_state.positions:
-        option_price = black_scholes(
-            st.session_state.stock.last_price,
-            pos['strike'],
-            pos['time_to_expiry'],
-            0.02,
-            0.3,
-            pos['type']
-        )
-        total += option_price * pos['quantity'] * 100 * pos['side']
+        try:
+            # Vérifier si c'est une position vanilla (avec 'strike') ou strategy (avec 'strikes')
+            if 'strike' in pos and isinstance(pos.get('strike'), (int, float)):
+                # Position vanilla (Call ou Put simple)
+                option_price = black_scholes(
+                    st.session_state.stock.last_price,
+                    pos['strike'],
+                    pos['time_to_expiry'],
+                    0.02,
+                    0.3,
+                    pos['type']
+                )
+                total += option_price * pos['quantity'] * 100 * pos['side']
+            
+            elif 'strikes' in pos:
+                # Position strategy (Spread, Straddle, Strangle)
+                from trading_game.core.option_pricer import Strategy
+                
+                strat_type = pos['type'].lower()
+                
+                # Recalculer le prix de la stratégie
+                if 'call spread' in strat_type or 'call_spread' in strat_type:
+                    strat = Strategy.call_spread(
+                        k1=pos['strikes'][0],
+                        k2=pos['strikes'][1],
+                        t=pos['time_to_expiry'],
+                        r=0.02
+                    )
+                elif 'put spread' in strat_type or 'put_spread' in strat_type:
+                    strat = Strategy.put_spread(
+                        k1=pos['strikes'][0],
+                        k2=pos['strikes'][1],
+                        t=pos['time_to_expiry'],
+                        r=0.02
+                    )
+                elif 'straddle' in strat_type:
+                    strat = Strategy.straddle(
+                        k=pos['strikes'][0],
+                        t=pos['time_to_expiry'],
+                        r=0.02
+                    )
+                elif 'strangle' in strat_type:
+                    strat = Strategy.strangle(
+                        k1=pos['strikes'][0],
+                        k2=pos['strikes'][1],
+                        t=pos['time_to_expiry'],
+                        r=0.02
+                    )
+                else:
+                    # Si type inconnu, skip cette position
+                    continue
+                
+                strategy_price = strat.price(S=st.session_state.stock.last_price, sigma=0.3)
+                total += strategy_price * pos['quantity'] * 100 * pos['side']
+        
+        except Exception as e:
+            # En cas d'erreur, on continue avec les autres positions
+            st.warning(f"⚠️ Error calculating position: {e}")
+            continue
 
+    # Futures P&L (comme avant)
     if 'futures_entry_price' in st.session_state and st.session_state.futures_position != 0:
         futures_pnl = (st.session_state.stock.last_price - st.session_state.futures_entry_price) * st.session_state.futures_position
         total += futures_pnl
@@ -573,35 +792,19 @@ with risk_col:
             return "#ff4444"
 
     delta_color = get_risk_color(portfolio_greeks['delta'], [500, 1500])
-    #st.markdown(f"**Delta:** <span style='color:{delta_color}; font-size:24px'>{portfolio_greeks['delta']:.0f}</span>", unsafe_allow_html=True)
-    #st.progress(min(1.0, abs(portfolio_greeks['delta']) / 2000))
-
     gamma_color = get_risk_color(portfolio_greeks['gamma'], [50, 150])
-    #st.markdown(f"**Gamma:** <span style='color:{gamma_color}; font-size:24px'>{portfolio_greeks['gamma']:.2f}</span>", unsafe_allow_html=True)
-    #st.progress(min(1.0, abs(portfolio_greeks['gamma']) / 200))
-
     vega_color = get_risk_color(portfolio_greeks['vega'], [1000, 3000])
-    #st.markdown(f"**Vega:** <span style='color:{vega_color}; font-size:24px'>{portfolio_greeks['vega']:.0f}</span>", unsafe_allow_html=True)
-    #st.progress(min(1.0, abs(portfolio_greeks['vega']) / 5000))
-
     theta_color = get_risk_color(portfolio_greeks['theta'], [50, 150])
-    #st.markdown(f"**Theta:** <span style='color:{theta_color}; font-size:24px'>{portfolio_greeks['theta']:.2f}</span>", unsafe_allow_html=True)
 
-    # Delta
     st.markdown(f"**Delta:** <span style='color:{delta_color}; font-size:24px'>{portfolio_greeks['delta']:.0f}</span>", unsafe_allow_html=True)
     render_risk_bar(portfolio_greeks['delta'], 2000)
-
-    # Gamma
     st.markdown(f"**Gamma:** <span style='color:{gamma_color}; font-size:24px'>{portfolio_greeks['gamma']:.2f}</span>", unsafe_allow_html=True)
     render_risk_bar(portfolio_greeks['gamma'], 200)
-
-    # Vega
     st.markdown(f"**Vega:** <span style='color:{vega_color}; font-size:24px'>{portfolio_greeks['vega']:.0f}</span>", unsafe_allow_html=True)
     render_risk_bar(portfolio_greeks['vega'], 5000)
-
-    # Theta
     st.markdown(f"**Theta:** <span style='color:{theta_color}; font-size:24px'>{portfolio_greeks['theta']:.2f}</span>", unsafe_allow_html=True)
     render_risk_bar(portfolio_greeks['theta'], 150)
+
     st.divider()
 
     st.markdown("### Risk Alerts")
@@ -623,9 +826,23 @@ st.header("📈 Current Positions")
 if st.session_state.positions:
     positions_data = []
     for idx, pos in enumerate(st.session_state.positions):
+        
+         # Handle different position types
+        if 'strike' in pos:  # Vanilla
+            strike = pos['strike']
+            option_type = pos['type']
+        elif 'strikes' in pos:  # Strategy
+        # Example: for call spread, take average strike for valuation
+            strike = sum(pos['strikes']) / len(pos['strikes'])
+            option_type = pos.get('type', 'strategy')
+        else:
+            st.warning(f"Skipping position {idx} — no strike info")
+            continue
+            
+        
         current_price = black_scholes(
             st.session_state.stock.last_price,
-            pos['strike'],
+            strike,
             pos['time_to_expiry'],
             0.02,
             0.3,
@@ -634,7 +851,7 @@ if st.session_state.positions:
 
         greeks = calculate_greeks(
             st.session_state.stock.last_price,
-            pos['strike'],
+            strike,
             pos['time_to_expiry'],
             0.02,
             0.3,
@@ -647,7 +864,10 @@ if st.session_state.positions:
             'ID': idx,
             'Side': 'LONG' if pos['side'] == 1 else 'SHORT',
             'Type': pos['type'].upper(),
-            'Strike': f"${pos['strike']:.0f}",
+            'Strike': (
+            f"${pos['strike']:.0f}" if 'strike' in pos
+            else ", ".join([f"${s:.0f}" for s in pos.get('strikes', [])])
+            ),
             'Qty': pos['quantity'],
             'Entry': f"${pos['purchase_price']:.2f}",
             'Current': f"${current_price:.2f}",
@@ -941,6 +1161,179 @@ render_quote_chat()
 st.divider()
 
 # ============================================================================
+#                               MANUAL TRADING PART
+# ============================================================================
+
+with st.expander("📊 Manual Trading", expanded= True):
+    
+    st.markdown("### 💼 Trading Interface")
+    st.divider()
+
+    tab1, tab2 = st.tabs(["Vanilla Options", "Strategies"])
+    
+    # ===== TAB 1: VANILLA OPTIONS =====
+    with tab1:
+        st.markdown("#### Buy/Sell Vanilla Options")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            side = st.radio("Side", ["Buy", "Sell"], horizontal=True, key="vanilla_side")
+            option_type = st.selectbox("Type", ["call", "put"], key="vanilla_type")
+            strike = st.number_input("Strike", value=float(st.session_state.stock.last_price), step=5.0, key="vanilla_strike")
+            
+        with col2:
+            days = st.slider("Days to Expiry", 1, 365, 30, key="vanilla_dte")
+            qty = st.number_input("Quantity", min_value=1, value=1, key="vanilla_qty")
+            order_type_choice = st.radio("Order Type", ["Market", "Limit"], horizontal=True, key="vanilla_order_type")
+            
+            if order_type_choice == "Limit":
+                limit_price = st.number_input("Limit Price", min_value=0.01, value=1.0, step=0.1, key="vanilla_limit")
+            else:
+                limit_price = None
+        
+        if st.button("Execute Vanilla Trade", key="btn_vanilla"):
+            # Créer l'ordre
+            vanilla_order = VanillaOrder(
+                side=OrderSide.BUY if side == "Buy" else OrderSide.SELL,
+                order_type=OrderType.MARKET if order_type_choice == "Market" else OrderType.LIMIT,
+                quantity=qty,
+                option_type=option_type,
+                strike=strike,
+                maturity=days/365,
+                spot_price=st.session_state.stock.last_price,
+                volatility=st.session_state.stock.vol,
+                risk_free_rate=0.05,  
+                limit_price=limit_price
+            )
+            
+            # Submit et execute
+            submitted = st.session_state.order_executor.submit_order(vanilla_order)
+            
+            if submitted:
+                success = st.session_state.order_executor.execute_vanilla_order(vanilla_order, Option)
+                
+                if success:
+                    # Mettre à jour le cash
+                    cost = vanilla_order.executed_price * qty * 100  # * 100 pour le notional
+                    
+                    if side == "Buy":
+                        st.session_state.cash -= cost
+                    else:
+                        st.session_state.cash += cost
+                    
+                    # Ajouter à positions
+                    st.session_state.positions.append({
+                        'type': option_type,
+                        'strike': strike,
+                        'expiry_date': datetime.now() + timedelta(days=days),
+                        'time_to_expiry': days/365,
+                        'quantity': qty,
+                        'purchase_price': vanilla_order.executed_price,
+                        'side': 1 if side == "Buy" else -1,
+                        'order_id': vanilla_order.order_id
+                    })
+                    
+                    st.success(f"✅ {side} order executed at ${vanilla_order.executed_price:.4f}")
+                    st.info(f"💰 Total cost: ${cost:.2f}")
+                    st.rerun()
+                else:
+                    st.error("❌ Order could not be executed (check limit price)")
+            else:
+                st.error(f"❌ Order rejected: {vanilla_order.rejection_reason}")
+    
+    # ===== TAB 2: STRATEGIES =====
+    with tab2:
+        st.markdown("#### Execute Option Strategies")
+        
+        strat_type = st.selectbox(
+            "Strategy Type", 
+            ["Call Spread", "Put Spread", "Straddle", "Strangle"],
+            key="strat_type"
+        )
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            side_strat = st.radio("Side", ["Buy", "Sell"], horizontal=True, key="strat_side")
+            
+            if strat_type in ["Call Spread", "Put Spread", "Strangle"]:
+                strike1 = st.number_input("Strike 1", value=float(st.session_state.stock.last_price - 5), step=5.0, key="strat_k1")
+                strike2 = st.number_input("Strike 2", value=float(st.session_state.stock.last_price + 5), step=5.0, key="strat_k2")
+                strikes = [strike1, strike2]
+            else:  # Straddle
+                strike_atm = st.number_input("Strike (ATM)", value=float(st.session_state.stock.last_price), step=5.0, key="strat_k")
+                strikes = [strike_atm]
+        
+        with col2:
+            days_strat = st.slider("Days to Expiry", 1, 365, 30, key="strat_dte")
+            qty_strat = st.number_input("Quantity", min_value=1, value=1, key="strat_qty")
+            order_type_strat = st.radio("Order Type", ["Market", "Limit"], horizontal=True, key="strat_order_type")
+            
+            if order_type_strat == "Limit":
+                limit_price_strat = st.number_input("Limit Price", min_value=0.01, value=1.0, step=0.1, key="strat_limit")
+            else:
+                limit_price_strat = None
+        
+        if st.button("Execute Strategy", key="btn_strategy"):
+            # Mapping du type
+            strat_type_map = {
+                "Call Spread": StrategyType.CALL_SPREAD,
+                "Put Spread": StrategyType.PUT_SPREAD,
+                "Straddle": StrategyType.STRADDLE,
+                "Strangle": StrategyType.STRANGLE
+            }
+            
+            # Créer l'ordre
+            strategy_order = StrategyOrder(
+                side=OrderSide.BUY if side_strat == "Buy" else OrderSide.SELL,
+                order_type=OrderType.MARKET if order_type_strat == "Market" else OrderType.LIMIT,
+                quantity=qty_strat,
+                strategy_type=strat_type_map[strat_type],
+                strikes=strikes,
+                maturity=days_strat/365,
+                spot_price=st.session_state.stock.last_price,
+                volatility=st.session_state.stock.vol,
+                risk_free_rate=0.05,
+                limit_price=limit_price_strat
+            )
+            
+            # Submit et execute
+            submitted = st.session_state.order_executor.submit_order(strategy_order)
+            
+            if submitted:
+                success = st.session_state.order_executor.execute_strategy_order(strategy_order, Strategy)
+                
+                if success:
+                    # Mettre à jour le cash
+                    cost = strategy_order.net_premium * qty_strat * 100
+                    
+                    if side_strat == "Buy":
+                        st.session_state.cash -= cost
+                    else:
+                        st.session_state.cash += cost
+                    
+                    # Ajouter à positions
+                    st.session_state.positions.append({
+                        'type': f"{strat_type}",
+                        'strikes': strikes,
+                        'expiry_date': datetime.now() + timedelta(days=days_strat),
+                        'time_to_expiry': days_strat/365,
+                        'quantity': qty_strat,
+                        'purchase_price': strategy_order.net_premium,
+                        'side': 1 if side_strat == "Buy" else -1,
+                        'order_id': strategy_order.order_id
+                    })
+                    
+                    st.success(f"✅ {strat_type} executed at ${strategy_order.net_premium:.4f}")
+                    st.info(f"💰 Total cost: ${cost:.2f}")
+                    st.rerun()
+                else:
+                    st.error("❌ Strategy could not be executed (check limit price)")
+            else:
+                st.error(f"❌ Order rejected: {strategy_order.rejection_reason}")
+
+# ============================================================================
 # CONTROLS
 # ============================================================================
 st.header("🎮 Game Controls")
@@ -974,48 +1367,6 @@ if show_history:
             st.dataframe(df, use_container_width=True)
         else:
             st.info("No trades yet")
-
 # ============================================================================
-# MANUAL TRADING (for testing - can be removed later)
+# FOOTER
 # ============================================================================
-with st.expander("🧪 Manual Trading (Testing Only)"):
-    test_col1, test_col2 = st.columns(2)
-
-    with test_col1:
-        st.markdown("#### Buy/Sell Options")
-        side = st.radio("Side", ["Long", "Short"], horizontal=True)
-        option_type = st.selectbox("Type", ["call", "put"])
-        strike = st.number_input("Strike", value=100.0, step=5.0)
-        days = st.slider("DTE", 1, 90, 30)
-        qty = st.number_input("Quantity", min_value=1, value=1)
-
-        if st.button("Execute Trade"):
-            price = black_scholes(st.session_state.stock.last_price, strike, days/365, 0.02, 0.3, option_type)
-            cost = price * qty * 100
-
-            if side == "Long" and st.session_state.cash >= cost:
-                st.session_state.cash -= cost
-                st.session_state.positions.append({
-                    'type': option_type,
-                    'strike': strike,
-                    'expiry_date': datetime.now() + timedelta(days=days),
-                    'time_to_expiry': days/365,
-                    'quantity': qty,
-                    'purchase_price': price,
-                    'side': 1
-                })
-                st.success("Long position opened!")
-                st.rerun()
-            elif side == "Short":
-                st.session_state.cash += cost
-                st.session_state.positions.append({
-                    'type': option_type,
-                    'strike': strike,
-                    'expiry_date': datetime.now() + timedelta(days=days),
-                    'time_to_expiry': days/365,
-                    'quantity': qty,
-                    'purchase_price': price,
-                    'side': -1
-                })
-                st.success("Short position opened!")
-                st.rerun()
