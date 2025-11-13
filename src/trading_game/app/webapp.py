@@ -312,7 +312,7 @@ input[type="number"] {
 
 /* Textarea */
 textarea {
-    color: #0e1117   !important;
+    color: #0e1117  git  !important;
 }
 
 /* ---------- Slider ---------- */
@@ -981,10 +981,10 @@ if st.session_state.positions:
 else:
     st.info("No open positions")
 
-st.markdown("### Futures Position")
+st.markdown("### Position")
 fut_col1, fut_col2, fut_col3 = st.columns(3)
 with fut_col1:
-    st.metric("Futures Position", f"{st.session_state.futures_position:+.0f} shares")
+    st.metric("Position", f"{st.session_state.futures_position:+.0f} shares")
 with fut_col2:
     if 'futures_entry_price' in st.session_state and st.session_state.futures_position != 0:
         futures_pnl = (st.session_state.stock.last_price - st.session_state.futures_entry_price) * st.session_state.futures_position
@@ -999,18 +999,18 @@ st.divider()
 # DELTA HEDGING
 # ============================================================================
 st.markdown('<a id="hedging"></a>', unsafe_allow_html=True)
-st.header("🛡️ Delta Hedging (Futures)")
+st.header("🛡️ Delta Hedging")
 
 hedge_col1, hedge_col2, hedge_col3 = st.columns([2, 2, 1])
 
 with hedge_col1:
     st.markdown(f"**Current Portfolio Delta:** {portfolio_greeks['delta']:.0f}")
     recommended_hedge = -portfolio_greeks['delta']
-    st.markdown(f"**Recommended Hedge:** {recommended_hedge:+.0f} futures")
+    st.markdown(f"**Recommended Hedge:** {recommended_hedge:+.0f} shares")
 
 with hedge_col2:
     futures_qty = st.number_input(
-        "Futures Quantity",
+        "Stock Quantity",
         min_value=-10000,
         max_value=10000,
         value=int(recommended_hedge),
