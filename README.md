@@ -108,7 +108,7 @@ src/
 # 1) Clone
 git clone https://github.com/<your-org-or-user>/flowmaster.git
 cd flowmaster
-pip install -r requirements.txt
+micromamba create -f environment.yml
 ```
 
 ### Setup (Poetry)
