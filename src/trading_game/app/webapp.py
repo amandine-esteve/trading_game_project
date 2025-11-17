@@ -312,7 +312,7 @@ input[type="number"] {
 
 /* Textarea */
 textarea {
-    color: #0e1117  git  !important;
+    color: #0e1117 !important;
 }
 
 /* ---------- Slider ---------- */
@@ -371,6 +371,38 @@ textarea {
 hr {
     border-color: #2e3444 !important;
     margin: 20px 0;
+}
+
+/* ---------- Table Styling ---------- */
+table {
+    background-color: #0e1117 !important;
+    color: #ffffff !important;
+    width: 100%;
+}
+
+table th {
+    background-color: #1e2130 !important;
+    color: #ffffff !important;
+    padding: 10px;
+    font-weight: bold;
+    border: 1px solid #2e3444;
+}
+
+table td {
+    background-color: #0e1117 !important;
+    color: #ffffff !important;
+    padding: 8px;
+    border: 1px solid #2e3444;
+}
+
+table tr:hover td {
+    background-color: #1e2130 !important;
+}
+
+/* Hide index column */
+table td:first-child,
+table th:first-child {
+    display: none !important;
 }
 
 </style>
@@ -956,7 +988,7 @@ if st.session_state.positions:
         })
 
     df_positions = pd.DataFrame(positions_data)
-    st.dataframe(df_positions, use_container_width=True, hide_index=True)
+    st.table(df_positions)
 
     close_col1, close_col2 = st.columns([3, 1])
     with close_col1:
