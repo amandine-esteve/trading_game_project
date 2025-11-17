@@ -1,23 +1,23 @@
 import random
-import streamlit as st
+from datetime import datetime, timedelta
+
 import numpy as np
 import pandas as pd
+import streamlit as st
 import plotly.graph_objects as go
-from datetime import datetime, timedelta
 from scipy.stats import norm
 from streamlit_autorefresh import st_autorefresh
 
 from trading_game.config.settings import REFRESH_INTERVAL
-from trading_game.utils.app_utils import create_stock, create_street
+from trading_game.utils.app_utils import create_street
+from trading_game.core.market import Stock
 from trading_game.core.street import QuoteRequest
 from trading_game.core.book import Book
-from trading_game.core.option_pricer import Strategy, Greeks
-
+from trading_game.core.option_pricer import Greeks, Option, Strategy
 from trading_game.core.manual_trading import (
     OrderExecutor, VanillaOrder, StrategyOrder,
     OrderSide, OrderType, StrategyType, OrderStatus
 )
-from trading_game.core.option_pricer import Option, Strategy
 
 # ============================================================================
 # PAGE CONFIG - Dark Theme
@@ -414,7 +414,7 @@ table th:first-child {
 
 if 'initialized' not in st.session_state:
     st.session_state.initialized = True
-    st.session_state.stock = create_stock()
+    st.session_state.stock = Stock.stock()
     st.session_state.street = create_street()
     st.session_state.book = Book()
     st.session_state.cash = 100000.0
@@ -720,7 +720,7 @@ col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
     st.metric(
-        "Underlying Price",
+        st.session_state.stock.ticker,
         f"${st.session_state.stock.last_price:.2f}",
         delta=f"{st.session_state.stock.last_price - st.session_state.stock.price_history[-2]:.2f}" if len(st.session_state.stock.price_history) > 1 else None
     )
@@ -780,7 +780,7 @@ st.header("📊 Market Overview")
 
 chart_col, risk_col = st.columns([2, 1])
 with chart_col:
-    st.subheader("📈 Live Stock Price")
+    st.subheader(f"📈 Live Price - {st.session_state.stock.name} {st.session_state.stock.ticker}")
 
     fig = go.Figure()
     x_values = list(range(len(st.session_state.stock.price_history)))
@@ -1031,7 +1031,7 @@ st.divider()
 # DELTA HEDGING
 # ============================================================================
 st.markdown('<a id="hedging"></a>', unsafe_allow_html=True)
-st.header("🛡️ Delta Hedging")
+st.header(f"🛡️ Trading Shares - {st.session_state.stock.ticker}")
 
 hedge_col1, hedge_col2, hedge_col3 = st.columns([2, 2, 1])
 
@@ -1272,7 +1272,7 @@ st.divider()
 # MANUAL TRADING
 # ============================================================================
 st.markdown('<a name="manual-trading"></a>', unsafe_allow_html=True)
-st.header("💼 Manual Trading")
+st.header(f"💼 Trading Options - {st.session_state.stock.ticker}")
 tab1, tab2 = st.tabs(["Vanilla Options", "Strategies"])
 
 # ===== TAB 1: VANILLA OPTIONS =====
