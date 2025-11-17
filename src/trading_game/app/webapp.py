@@ -665,13 +665,13 @@ if st.session_state.game_over:
     st.divider()
 
 progress_pct = st.session_state.tick_count / st.session_state.game_duration
-time_remaining = st.session_state.game_duration - st.session_state.tick_count
+time_remaining = int(((st.session_state.game_duration - st.session_state.tick_count) * REFRESH_INTERVAL/1000)//60)
 
 col_progress1, col_progress2 = st.columns([4, 1])
 with col_progress1:
     st.progress(progress_pct, text=f"Game Progress: {st.session_state.tick_count}/{st.session_state.game_duration} ticks")
 with col_progress2:
-    st.metric("Time Left", f"{time_remaining} ticks")
+    st.metric("Time Left", f"{time_remaining} min" if time_remaining > 0 else "Last Minute")
 
 st.divider()
 
