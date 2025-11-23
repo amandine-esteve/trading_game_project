@@ -4,44 +4,11 @@ from typing import Literal, List, Optional
 
 from pydantic import BaseModel, model_validator
 
-from trading_game.config.investor_pool import get_random_investors
 from trading_game.config.request_pool import get_random_quote_phrase
-from trading_game.config.settings import NB_INVESTORS
 from trading_game.core.option_pricer import Strategy
+from trading_game.models.street import Investor
 
 
-class Investor(BaseModel):
-    name: str
-    company: str
-    width_tolerance: Optional[float] = None
-    client_relationship: Optional[int] = None
-
-    @model_validator(mode="after")
-    def set_width_tolerance(self):
-        if self.width_tolerance is None:
-            self.width_tolerance = random.uniform(0.1,0.2)
-        return self
-
-    @model_validator(mode="after")
-    def set_client_relationship(self):
-        if self.client_relationship is None:
-            self.client_relationship = random.randint(0,10)
-        return self
-
-class Street(BaseModel):
-    investors: List[Investor]
-
-    @model_validator(mode="after")
-    def validate_investors(self):
-        if len(self.investors) > 10:
-            raise ValueError("Should not be more than 10 investors.")
-        return self
-
-    @classmethod
-    def street(cls):
-        investors_data = get_random_investors(NB_INVESTORS, unique_companies=True)
-        street_data = [Investor(**investor_data) for investor_data in investors_data]
-        return cls(investors=street_data)
 
 class QuoteRequest(BaseModel):
     investor: Investor
@@ -74,17 +41,10 @@ class QuoteRequest(BaseModel):
     def maturity_to_string(maturity: float) -> str:
         """
         Convert maturity in years to formatted string like 'Jan25', 'Mar26', etc.
-
-        Args:
-            maturity: Maturity in years (e.g., 1/12 for 1 month, 1 for 1 year)
-
-        Returns:
-            String formatted as first 3 letters of month + 2-digit year
         """
         today = date.today()
         days = int(maturity * 365.25)  # Account for leap years
         future_date = today + timedelta(days=days)
-
         return future_date.strftime("%b%y")
 
     def generate_request_message(self) -> str:
@@ -123,10 +83,6 @@ class QuoteRequest(BaseModel):
         elif self.way=='sell' and accept:
             return "Yours ty"
         return "Pass"
-
-
-
-
 
 
 

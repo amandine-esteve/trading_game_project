@@ -1,10 +1,10 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Tuple, Union, Literal
+from typing import Dict, Tuple
 from datetime import datetime
 import secrets
 
-from .market import Stock
-from .option_pricer import Option, Strategy, Greeks
+from trading_game.models.stock import Stock
+from .option_pricer import Strategy, Greeks
 
 class Book(BaseModel):
 
