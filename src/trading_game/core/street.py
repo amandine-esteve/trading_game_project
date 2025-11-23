@@ -1,26 +1,18 @@
 import random
 from datetime import date, timedelta
-from enum import Enum
 from typing import Literal, List, Optional
 
 from pydantic import BaseModel, model_validator
 
+from trading_game.config.investor_pool import get_random_investors
+from trading_game.config.request_pool import get_random_quote_phrase
+from trading_game.config.settings import NB_INVESTORS
 from trading_game.core.option_pricer import Strategy
 
-
-class TypeInvest(Enum):
-    DIR = "Directional"
-    VOL = "Volatility"
-
-class StateRequest(Enum):
-    INITIALIZED = "Initialized"
-    ONGOING = "Ongoing"
-    CLOSED = "Closed"
 
 class Investor(BaseModel):
     name: str
     company: str
-    type_invest: TypeInvest
     width_tolerance: Optional[float] = None
     client_relationship: Optional[int] = None
 
@@ -44,6 +36,12 @@ class Street(BaseModel):
         if len(self.investors) > 10:
             raise ValueError("Should not be more than 10 investors.")
         return self
+
+    @classmethod
+    def street(cls):
+        investors_data = get_random_investors(NB_INVESTORS, unique_companies=True)
+        street_data = [Investor(**investor_data) for investor_data in investors_data]
+        return cls(investors=street_data)
 
 class QuoteRequest(BaseModel):
     investor: Investor
@@ -91,17 +89,25 @@ class QuoteRequest(BaseModel):
 
     def generate_request_message(self) -> str:
         strat_data = self.get_strat_data(self.strat)
-        name = strat_data["name"]
+
+        name = strat_data["name"].lower()
         maturities = [self.maturity_to_string(mat) for mat in strat_data["maturities"]]
+        maturities_str = f"{maturities[0]} " if len(maturities)==1 else f"{'-'.join(maturities)}"
         sorted_strikes = strat_data["strikes"].copy()
         sorted_strikes.sort()
         strikes = [str(k) for k in sorted_strikes]
-        message = f"{self.investor.company} [{self.investor.name}]: Hi could I pls get a quote for a "
-        message += f"{maturities[0]} " if len(maturities)==1 else f"{'-'.join(maturities)} "
-        message += f"{strikes[0]} " if len(strikes)==1 else f"{'-'.join(strikes)} "
-        message += f"{name.lower()} in "
-        message += f"{int(self.quantity/1_000)}k?" if self.quantity<1_000_000 else f"{int(self.quantity/1_000_000)}m?"
-        return message
+        strikes_str = f"{strikes[0]} " if len(strikes)==1 else f"{'-'.join(strikes)}"
+        qty_str = f"{int(self.quantity / 1_000)}k" if self.quantity < 1_000_000 else f"{int(self.quantity / 1_000_000)}m"
+
+        phrase = get_random_quote_phrase()
+
+        templates = [
+            f"{phrase} a {maturities_str} {strikes_str} {name} in {qty_str}",
+            f"{phrase} the {maturities_str} {strikes_str} {name}s for {qty_str}",
+            f"{phrase} {maturities_str} {strikes_str} {name} {qty_str}"
+        ]
+
+        return f"<strong> {self.investor.company} [{self.investor.name}]: </strong> {random.choice(templates)}"
 
     def evaluate_bid_ask(self, bid: float, ask: float, price: float, vol: float) -> bool:
         mid = self.strat.price(price, vol)

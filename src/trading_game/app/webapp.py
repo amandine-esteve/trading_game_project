@@ -9,9 +9,8 @@ from scipy.stats import norm
 from streamlit_autorefresh import st_autorefresh
 
 from trading_game.config.settings import REFRESH_INTERVAL
-from trading_game.utils.app_utils import create_street
 from trading_game.core.market import Stock
-from trading_game.core.street import QuoteRequest
+from trading_game.core.street import QuoteRequest, Street
 from trading_game.core.book import Book
 from trading_game.core.option_pricer import Greeks, Option, Strategy
 from trading_game.core.manual_trading import (
@@ -415,7 +414,7 @@ table th:first-child {
 if 'initialized' not in st.session_state:
     st.session_state.initialized = True
     st.session_state.stock = Stock.stock()
-    st.session_state.street = create_street()
+    st.session_state.street = Street.street()
     st.session_state.book = Book()
     st.session_state.cash = 100000.0
     st.session_state.starting_cash = 100000.0
@@ -1162,7 +1161,7 @@ def render_quote_chat():
                 st.markdown(f"""
                 <div style="background-color: #d0d4db; padding: 10px; border-radius: 10px; margin: 5px 0; max-width: 80%;">
                     <small style="color: #666;">{msg['timestamp']}</small><br>
-                    <strong>Trader:</strong> {msg['message']}
+                    {msg['message']}
                 </div>
                 """, unsafe_allow_html=True)
             elif msg['type'] == 'player_response':
