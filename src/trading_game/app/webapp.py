@@ -1082,7 +1082,7 @@ with hedge_col3:
             st.session_state.stock,
             futures_qty,
             st.session_state.stock.last_price,
-            st.session_state.stock.vol)   
+            st.session_state.stock.last_vol)
 
             st.rerun()
         else:
@@ -1143,7 +1143,7 @@ def add_market_response(quote_id, final_answer):
             st.session_state.quote_request.strat,
             st.session_state.quote_request.quantity,
             st.session_state.stock.last_price,
-            st.session_state.stock.vol)  # check if right spot ref
+            st.session_state.stock.last_vol)  # check if right spot ref
 
     st.session_state.quote_cleared_tick = st.session_state.tick_count
     st.session_state.pending_quote = None
@@ -1198,7 +1198,7 @@ def render_quote_chat():
                     # Add player response to chat
                     add_player_response(st.session_state.pending_quote, bid_price, ask_price)
                     # Evaluate response
-                    result = st.session_state.quote_request.evaluate_bid_ask(bid_price, ask_price, st.session_state.stock.last_price, st.session_state.stock.vol)
+                    result = st.session_state.quote_request.evaluate_bid_ask(bid_price, ask_price, st.session_state.stock.last_price, st.session_state.stock.last_vol)
                     st.session_state.result = result
                     final_answer = st.session_state.quote_request.generate_response_message(result)
                     # Add market response to chat
@@ -1316,7 +1316,7 @@ with tab1:
             strike=strike,
             maturity=days/365,
             spot_price=st.session_state.stock.last_price,
-            volatility=st.session_state.stock.vol,
+            volatility=st.session_state.stock.last_vol,
             risk_free_rate=0.05,
             limit_price=limit_price
         )
@@ -1403,7 +1403,7 @@ with tab2:
             strikes=strikes,
             maturity=days_strat/365,
             spot_price=st.session_state.stock.last_price,
-            volatility=st.session_state.stock.vol,
+            volatility=st.session_state.stock.last_vol,
             risk_free_rate=0.05,
             limit_price=limit_price_strat
         )

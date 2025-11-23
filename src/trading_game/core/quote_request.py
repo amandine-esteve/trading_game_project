@@ -1,10 +1,10 @@
 import random
 from datetime import date, timedelta
-from typing import Literal, List, Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, model_validator
 
-from trading_game.config.request_pool import get_random_quote_phrase
+from trading_game.config.request_pool import get_random_quote_phrase, get_random_response_phrase
 from trading_game.core.option_pricer import Strategy
 from trading_game.models.street import Investor
 
@@ -15,7 +15,7 @@ class QuoteRequest(BaseModel):
     level: Literal['easy', 'hard']
     init_price: float
     strat: Optional[Strategy] = None
-    way: Optional[Literal['buy', 'sell']] = random.choice(['buy', 'sell'])
+    way: Literal['buy', 'sell'] = random.choice(['buy', 'sell'])
     quantity: Optional[float] = random.choice([250_000, 500_000, 1_000_000, 2_000_000])
 
     @model_validator(mode="after")
@@ -78,11 +78,9 @@ class QuoteRequest(BaseModel):
         return False
 
     def generate_response_message(self, accept: bool) -> str:
-        if self.way=='buy' and accept:
-            return "Mine ty"
-        elif self.way=='sell' and accept:
-            return "Yours ty"
-        return "Pass"
+        if accept:
+            return f"<strong> {self.investor.company} [{self.investor.name}]: </strong> {get_random_response_phrase(self.way)}"
+        return get_random_response_phrase('pass')
 
 
 
