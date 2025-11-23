@@ -26,9 +26,65 @@ QUOTE_REQUEST_PHRASES = [
     "Can you show me"
 ]
 
+RESPONSE_PHRASES = {
+
+    "buy": [
+        "Mine ty",
+        "Mine, thanks",
+        "Mine thank you"
+        "I'll buy"
+        "Buy",
+        "Lift",
+        "Lifted",
+        "Mine"
+        "I'm a buyer ty",
+        "That works, mine",
+        "Okay mine",
+        "Mine pls",
+        "Mine please",
+        "Buy ty",
+        "Lift ty"
+    ],
+
+    "sell": [
+        "Yours ty",
+        "Yours, thanks",
+        "Yours thank you",
+        "I'll sell",
+        "Sell",
+        "Hit",
+        "Hit it",
+        "Yours",
+        "I'm a seller ty",
+        "That works, yours",
+        "Okay yours",
+        "Yours pls",
+        "Yours please",
+        "Hit ty",
+        "Sell ty"
+    ],
+
+    "pass": [
+        "Pass",
+        "Pass ty",
+        "Pass thanks",
+        "I'll pass",
+        "Nothing for now",
+        "Not for me",
+        "Pass for now",
+        "No thanks",
+        "Nty"
+    ]
+}
+
 
 import random
+from typing import Literal
 
 def get_random_quote_phrase() -> str:
     """Returns a random quote request phrase"""
     return random.choice(QUOTE_REQUEST_PHRASES)
+
+def get_random_response_phrase(way: Literal['buy', 'sell', 'pass']) -> str:
+    """Returns a random response phrase depending on way"""
+    return random.choice(RESPONSE_PHRASES[way])
