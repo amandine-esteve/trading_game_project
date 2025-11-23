@@ -59,20 +59,24 @@ class Stock(BaseModel):
         stock_data = get_random_stock()
         return cls(**stock_data)
 
-    def move_price(self):
+    def _update_state(self, t: float, p: float, v: float) -> None:
+        self.last_time = t
+        self.last_price = p
+        self.last_vol = v
+        self.time_history.append(t)
+        self.price_history.append(p)
+        self.vol_history.append(v)
+
+    def move_price(self) -> tuple[float, float]:
         t = time.time()
-        delta_t = time.time() - self.last_time
+        delta_t = t - self.last_time
         dt = delta_t/(252*4) #(252*24*3600)
 
         drift = (self.rate - 0.5 * self.last_vol ** 2) * dt
         diffusion = self.last_vol * np.sqrt(dt) * np.random.normal(0, 1)
         p = self.last_price * np.exp(drift + diffusion)
 
-        self.last_price = p
-        self.last_time = t
-        self.price_history.append(p)
-        self.vol_history.append(self.last_vol)
-        self.time_history.append(t)
+        self._update_state(t, p, self.last_vol)
 
         return t, p
 
