@@ -28,6 +28,12 @@ class StrategyType(Enum):
     PUT_SPREAD = "PutSpread"
     STRADDLE = "Straddle"
     STRANGLE = "Strangle"
+    CALL_CALENDAR_SPREAD = "CallCalendarSpread"
+    PUT_CALENDAR_SPREAD = "PutCalendarSpread"
+    BULL_RISK_REVERSAL = "BullRiskReversal"
+    BEAR_RISK_REVERSAL = "BearRiskReversal"
+    CALL_BUTTERFLY = "CallButterfly"
+    PUT_BUTTERFLY = "PutButterfly"
 
 
 class Order(BaseModel):
@@ -103,10 +109,17 @@ class VanillaOrder(Order):
 
 
 class StrategyOrder(Order):
-    """Order for option strategies (Spread, Straddle, Strangle)"""
+    """Order for option strategies (Spreads, Straddle, Strangle, Calendars, Butterflies, RR)"""
     strategy_type: StrategyType
     strikes: List[float] = Field(..., description="List of strikes for the strategy")
     maturity: float = Field(..., gt=0, description="Maturity in years")
+    short_maturity: Optional[float] = Field(
+        default=None, description="Short leg maturity in years (for calendar spreads)"
+    )
+    long_maturity: Optional[float] = Field(
+        default=None, description="Long leg maturity in years (for calendar spreads)"
+    )
+
     spot_price: float = Field(..., gt=0, description="Underlying spot price")
     volatility: float = Field(..., gt=0, description="Implied vol")
     risk_free_rate: float
@@ -116,16 +129,56 @@ class StrategyOrder(Order):
     @model_validator(mode='after')
     def validate_strikes(self):
         """Validate strikes based on strategy type"""
-        if self.strategy_type in [StrategyType.CALL_SPREAD, StrategyType.PUT_SPREAD, StrategyType.STRANGLE]:
+
+        # ===== 2 STRIKES =====
+        if self.strategy_type in [
+            StrategyType.CALL_SPREAD,
+            StrategyType.PUT_SPREAD,
+            StrategyType.STRANGLE,
+            StrategyType.BULL_RISK_REVERSAL,
+            StrategyType.BEAR_RISK_REVERSAL,
+        ]:
             if len(self.strikes) != 2:
                 raise ValueError(f"{self.strategy_type.value} requires exactly 2 strikes")
-            if self.strikes[0] >= self.strikes[1]:
+            k1, k2 = self.strikes
+            if k1 >= k2:
                 raise ValueError("First strike must be smaller than second strike")
-        
-        elif self.strategy_type == StrategyType.STRADDLE:
+
+        # ===== 1 STRIKE =====
+        elif self.strategy_type in [
+            StrategyType.STRADDLE,
+            StrategyType.CALL_CALENDAR_SPREAD,
+            StrategyType.PUT_CALENDAR_SPREAD,
+        ]:
             if len(self.strikes) != 1:
-                raise ValueError("Straddle requires exactly 1 strike")
-        
+                raise ValueError(f"{self.strategy_type.value} requires exactly 1 strike")
+
+        # ===== 3 STRIKES (BUTTERFLIES) =====
+        elif self.strategy_type in [
+            StrategyType.CALL_BUTTERFLY,
+            StrategyType.PUT_BUTTERFLY,
+        ]:
+            if len(self.strikes) != 3:
+                raise ValueError(f"{self.strategy_type.value} requires exactly 3 strikes")
+            k1, k2, k3 = self.strikes
+            if not (k1 < k2 < k3):
+                raise ValueError("For a butterfly, strikes must satisfy k1 < k2 < k3")
+
+        return self
+
+    @model_validator(mode='after')
+    def validate_calendar_maturities(self):
+        """Extra checks for calendar spreads maturities"""
+        if self.strategy_type in [
+            StrategyType.CALL_CALENDAR_SPREAD,
+            StrategyType.PUT_CALENDAR_SPREAD,
+        ]:
+            if self.short_maturity is None or self.long_maturity is None:
+                raise ValueError("Calendar spreads require short_maturity and long_maturity")
+            if self.short_maturity <= 0 or self.long_maturity <= 0:
+                raise ValueError("Maturities must be > 0")
+            if not self.short_maturity < self.long_maturity:
+                raise ValueError("For calendar spreads, short_maturity must be < long_maturity")
         return self
 
     @model_validator(mode='after')
@@ -147,6 +200,7 @@ class StrategyOrder(Order):
             return market_price <= self.limit_price
         else:  
             return market_price >= self.limit_price
+
 
 
 class OrderExecutor(BaseModel):
@@ -210,7 +264,6 @@ class OrderExecutor(BaseModel):
         return success
 
     def execute_strategy_order(self, order: StrategyOrder, strategy_class) -> bool:
-        """Execute a strategy order using the Strategy class"""
         if order not in self.pending_orders:
             return False
         
@@ -245,17 +298,85 @@ class OrderExecutor(BaseModel):
                 t=order.maturity,
                 r=order.risk_free_rate,
             )
-        
+
+        elif order.strategy_type == StrategyType.BULL_RISK_REVERSAL:
+            strat = strategy_class.risk_reversal_bullish(
+                k1=order.strikes[0],
+                k2=order.strikes[1],
+                t=order.maturity,
+                r=order.risk_free_rate,
+            )
+
+        elif order.strategy_type == StrategyType.BEAR_RISK_REVERSAL:
+            strat = strategy_class.risk_reversal_bearish(
+                k1=order.strikes[0],
+                k2=order.strikes[1],
+                t=order.maturity,
+                r=order.risk_free_rate,
+            )
+
+        elif order.strategy_type == StrategyType.CALL_BUTTERFLY:
+            strat = strategy_class.butterfly(
+                k1=order.strikes[0],
+                k2=order.strikes[1],
+                k3=order.strikes[2],
+                t=order.maturity,
+                r=order.risk_free_rate,
+                option_type="call",
+            )
+
+        elif order.strategy_type == StrategyType.PUT_BUTTERFLY:
+            strat = strategy_class.butterfly(
+                k1=order.strikes[0],
+                k2=order.strikes[1],
+                k3=order.strikes[2],
+                t=order.maturity,
+                r=order.risk_free_rate,
+                option_type="put",
+            )
+
+        elif order.strategy_type == StrategyType.CALL_CALENDAR_SPREAD:
+            # Utilise les 2 maturités
+            if order.short_maturity is None or order.long_maturity is None:
+                order.reject("Missing maturities for Call Calendar Spread")
+                self.pending_orders.remove(order)
+                self.rejected_orders.append(order)
+                return False
+
+            strat = strategy_class.calendar_spread(
+                k=order.strikes[0],
+                t1=order.short_maturity,
+                t2=order.long_maturity,
+                r=order.risk_free_rate,
+                option_type="call",
+            )
+
+        elif order.strategy_type == StrategyType.PUT_CALENDAR_SPREAD:
+            if order.short_maturity is None or order.long_maturity is None:
+                order.reject("Missing maturities for Put Calendar Spread")
+                self.pending_orders.remove(order)
+                self.rejected_orders.append(order)
+                return False
+
+            strat = strategy_class.calendar_spread(
+                k=order.strikes[0],
+                t1=order.short_maturity,
+                t2=order.long_maturity,
+                r=order.risk_free_rate,
+                option_type="put",
+            )
+
         else:
             order.reject("Unsupported strategy type")
             self.pending_orders.remove(order)
             self.rejected_orders.append(order)
             return False
         
+        # Prix de marché de la stratégie
         market_price = abs(strat.price(S=order.spot_price, sigma=order.volatility))
         order.net_premium = market_price
         
-        # Check if order can execute
+        # Check if order can execute (limit / market)
         if not order.can_execute(market_price):
             return False
         
@@ -270,6 +391,7 @@ class OrderExecutor(BaseModel):
             self.current_position += position_change
             
         return success
+
 
     def cancel_order(self, order_id: str) -> bool:
         """Cancel a pending order by ID"""

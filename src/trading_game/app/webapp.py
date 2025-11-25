@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 from scipy.stats import norm
 from streamlit_autorefresh import st_autorefresh
 
-from trading_game.config.settings import REFRESH_INTERVAL
+from trading_game.config.settings import REFRESH_INTERVAL, RF
 from trading_game.core.quote_request import QuoteRequest
 from trading_game.core.book import Book
 from trading_game.core.option_pricer import Option, Strategy
@@ -1317,7 +1317,7 @@ with tab1:
             maturity=days/365,
             spot_price=st.session_state.stock.last_price,
             volatility=st.session_state.stock.last_vol,
-            risk_free_rate=0.05,
+            risk_free_rate=RF,
             limit_price=limit_price
         )
         
@@ -1351,30 +1351,112 @@ with tab2:
     st.markdown("#### Execute Option Strategies")
     
     strat_type = st.selectbox(
-        "Strategy Type", ["Call Spread", "Put Spread", "Straddle", "Strangle"], key="strat_type"
+        "Strategy Type",
+        [
+            "Call Spread",
+            "Put Spread",
+            "Straddle",
+            "Strangle",
+            "Call Calendar Spread",
+            "Put Calendar Spread",
+            "Bull Risk Reversal",
+            "Bear Risk Reversal",
+            "Call Butterfly",
+            "Put Butterfly"
+        ],
+        key="strat_type"
     )
-    
+
     col1, col2 = st.columns(2)
-    
+
     with col1:
         side_strat = st.radio("Side", ["Buy", "Sell"], horizontal=True, key="strat_side")
         
-        if strat_type in ["Call Spread", "Put Spread", "Strangle"]:
+        # ===== 2 STRIKES =====
+        if strat_type in [
+            "Call Spread",
+            "Put Spread",
+            "Strangle",
+            "Bull Risk Reversal",
+            "Bear Risk Reversal"
+        ]:
             strike1 = st.number_input(
-                "Strike 1", value=float(st.session_state.stock.last_price - 5), step=5.0, key="strat_k1"
+                "Strike 1",
+                value=float(st.session_state.stock.last_price * 0.95),
+                min_value=0.0001,
+                step=5.0,
+                key="strat_k1"
             )
             strike2 = st.number_input(
-                "Strike 2", value=float(st.session_state.stock.last_price + 5), step=5.0, key="strat_k2"
+                "Strike 2",
+                value=float(st.session_state.stock.last_price * 1.05),
+                min_value=0.0001,
+                step=5.0,
+                key="strat_k2"
             )
             strikes = [strike1, strike2]
-        else:  # Straddle
+
+        # ===== 3 STRIKES (BUTTERFLIES) =====
+        elif strat_type in ["Call Butterfly", "Put Butterfly"]:
+            strike1 = st.number_input(
+                "Strike 1 (Low)",
+                value=float(st.session_state.stock.last_price * 0.90),
+                min_value=0.0001,
+                step=5.0,
+                key="strat_k1_fly"
+            )
+            strike2 = st.number_input(
+                "Strike 2 (Mid)",
+                value=float(st.session_state.stock.last_price),
+                min_value=0.0001,
+                step=5.0,
+                key="strat_k2_fly"
+            )
+            strike3 = st.number_input(
+                "Strike 3 (High)",
+                value=float(st.session_state.stock.last_price * 1.10),
+                min_value=0.0001,
+                step=5.0,
+                key="strat_k3_fly"
+            )
+            strikes = [strike1, strike2, strike3]
+
+        # ===== 1 STRIKE (STRADDLE + CALENDARS) =====
+        else:  # Straddle, Call Calendar Spread, Put Calendar Spread
+            label = "Strike (ATM)" if strat_type == "Straddle" else "Strike"
             strike_atm = st.number_input(
-                "Strike (ATM)", value=float(st.session_state.stock.last_price), step=5.0, key="strat_k"
+                label,
+                value=float(st.session_state.stock.last_price),
+                min_value=0.0001,
+                step=5.0,
+                key="strat_k"
             )
             strikes = [strike_atm]
-    
+
     with col2:
-        days_strat = st.slider("Days to Expiry", 1, 365, 30, key="strat_dte")
+        # ---- Maturities ----
+        if strat_type in ["Call Calendar Spread", "Put Calendar Spread"]:
+            # Deux maturités comme dans ton pricer : short & long
+            short_days_strat = st.slider(
+                "Short Leg - Days to Expiry",
+                1, 365, 30,
+                key="strat_dte_short"
+            )
+            long_days_strat = st.slider(
+                "Long Leg - Days to Expiry",
+                2, 730, 180,
+                key="strat_dte_long"
+            )
+            # Pour l'instant, on continue à utiliser une seule maturité dans StrategyOrder
+            # On prend par exemple la maturité longue pour 'maturity'
+            days_strat = long_days_strat
+        else:
+            days_strat = st.slider(
+                "Days to Expiry",
+                1, 365, 30,
+                key="strat_dte"
+            )
+
         qty_strat = st.number_input("Quantity", min_value=1, value=1, key="strat_qty")
         order_type_strat = st.radio(
             "Order Type", ["Market", "Limit"], horizontal=True, key="strat_order_type"
@@ -1386,15 +1468,21 @@ with tab2:
             )
         else:
             limit_price_strat = None
-    
+
     if st.button("Execute Strategy", key="btn_strategy"):
         strat_type_map = {
             "Call Spread": StrategyType.CALL_SPREAD,
             "Put Spread": StrategyType.PUT_SPREAD,
             "Straddle": StrategyType.STRADDLE,
-            "Strangle": StrategyType.STRANGLE
+            "Strangle": StrategyType.STRANGLE,
+            "Call Calendar Spread": StrategyType.CALL_CALENDAR_SPREAD,
+            "Put Calendar Spread": StrategyType.PUT_CALENDAR_SPREAD,
+            "Bull Risk Reversal": StrategyType.BULL_RISK_REVERSAL,
+            "Bear Risk Reversal": StrategyType.BEAR_RISK_REVERSAL,
+            "Call Butterfly": StrategyType.CALL_BUTTERFLY,
+            "Put Butterfly": StrategyType.PUT_BUTTERFLY,
         }
-        
+            
         strategy_order = StrategyOrder(
             side=OrderSide.BUY if side_strat == "Buy" else OrderSide.SELL,
             order_type=OrderType.MARKET if order_type_strat == "Market" else OrderType.LIMIT,
@@ -1402,9 +1490,11 @@ with tab2:
             strategy_type=strat_type_map[strat_type],
             strikes=strikes,
             maturity=days_strat/365,
+            short_maturity=short_days_strat/365 if strat_type in ["Call Calendar Spread", "Put Calendar Spread"] else None,
+            long_maturity=long_days_strat/365 if strat_type in ["Call Calendar Spread", "Put Calendar Spread"] else None,
             spot_price=st.session_state.stock.last_price,
             volatility=st.session_state.stock.last_vol,
-            risk_free_rate=0.05,
+            risk_free_rate=RF,
             limit_price=limit_price_strat
         )
         
@@ -1493,3 +1583,461 @@ if show_history:
 # ============================================================================
 # FOOTER
 # ============================================================================
+
+# ============================================================================
+# PRICER TOOL
+# ============================================================================
+st.markdown('<a id="pricer"></a>', unsafe_allow_html=True)
+st.header("🧮 Options Pricer Tool")
+
+pricer_tab1, pricer_tab2 = st.tabs(["Vanilla Options", "Strategies"])
+
+# ============================================================================
+# TAB 1: SINGLE OPTION PRICER
+# ============================================================================
+with pricer_tab1:
+    st.subheader("Price a Single Option")
+
+    # ---------- OPTION TYPE SUR UNE LIGNE SEULE ----------
+    st.markdown(
+        "<span style='color:white; font-weight:bold;'>Option Type</span>",
+        unsafe_allow_html=True
+    )
+    pricer_opt_type = st.selectbox(
+        "",                      # pas de texte, on gère le titre au-dessus
+        ["call", "put"],
+        key="pricer_opt_type",
+        label_visibility="collapsed"
+    )
+
+    # On garde spot & rate en caché (market data)
+    pricer_spot = float(st.session_state.stock.last_price)
+    pricer_rf = RF
+
+    # ---------- INPUTS À GAUCHE / RÉSULTATS À DROITE ----------
+    input_col, result_col = st.columns([2, 1])
+
+    # ----- COLONNE GAUCHE : MARKET PARAMETERS -----
+    with input_col:
+        st.markdown(
+            "<br><span style='color:white; font-weight:bold;'>Market Parameters</span>",
+            unsafe_allow_html=True
+        )
+
+        # Strike
+        st.markdown(
+            "<span style='color:white;'>Strike</span>",
+            unsafe_allow_html=True
+        )
+        pricer_strike = st.number_input(
+            "",
+            value=float(pricer_spot),
+            step=1.0,
+            key="pricer_strike",
+            label_visibility="collapsed"
+        )
+
+        # Vol
+        st.markdown(
+            "<span style='color:white;'>Volatility (σ)</span>",
+            unsafe_allow_html=True
+        )
+        pricer_vol = st.number_input(
+            "",
+            value=float(st.session_state.stock.last_vol),
+            min_value=0.01,
+            max_value=2.0,
+            step=0.01,
+            format="%.4f",
+            key="pricer_vol",
+            label_visibility="collapsed"
+        )
+
+        # Maturity
+        st.markdown(
+            "<span style='color:white;'>Time to Maturity (years)</span>",
+            unsafe_allow_html=True
+        )
+        pricer_maturity = st.slider("Days to Expiry", 1, 365, 30, key="maturity_dte")
+
+    # ----- COLONNE DROITE : RESULTS + GREEKS -----
+    
+    with result_col:
+    # Titre "Results"
+        st.markdown(
+            "<br><span style='color:white; font-weight:bold;'>Results</span>",
+            unsafe_allow_html=True
+        )
+
+        from trading_game.core.option_pricer import Option, Greeks
+
+        pricer_option = Option(
+            K=pricer_strike,
+            T=pricer_maturity,
+            r=pricer_rf,
+            option_type=pricer_opt_type
+        )
+
+        option_price = pricer_option.price(pricer_spot, pricer_vol)
+
+        # ----- OPTION PRICE EN ROUGE & GRAS -----
+        st.markdown(
+            "<span style='color:white; font-weight:bold;'>Option Price</span>",
+            unsafe_allow_html=True
+        )
+        st.markdown(
+            f"<div style='font-size:32px; font-weight:bold; color:#ff4b4b;'>"
+            f"${option_price:.4f}</div>",
+            unsafe_allow_html=True
+        )
+
+        # ----- GREEKS OPTIONNELS DANS UN EXPANDER -----
+        pricer_greeks = Greeks(option=pricer_option)
+        greeks_result = pricer_greeks.all_greeks(pricer_spot, pricer_vol)
+
+        with st.expander("Show Greeks", expanded=False):
+            st.markdown(
+                "<span style='color:white; font-weight:bold;'>Greeks</span>",
+                unsafe_allow_html=True
+            )
+
+            st.markdown(
+                f"<span style='font-weight:bold;'>Delta:</span> {greeks_result['delta']:.4f}",
+                unsafe_allow_html=True
+            )
+            st.markdown(
+                f"<span style='font-weight:bold;'>Gamma:</span> {greeks_result['gamma']:.6f}",
+                unsafe_allow_html=True
+            )
+            st.markdown(
+                f"<span style='font-weight:bold;'>Vega:</span> {greeks_result['vega']:.4f}",
+                unsafe_allow_html=True
+            )
+            st.markdown(
+                f"<span style='font-weight:bold;'>Theta:</span> {greeks_result['theta']:.6f}",
+                unsafe_allow_html=True
+            )
+            st.markdown(
+                f"<span style='font-weight:bold;'>Rho:</span> {greeks_result['rho']:.6f}",
+                unsafe_allow_html=True
+            )
+
+
+st.divider()
+
+# ============================================================================
+# TAB 2: STRATEGY PRICER
+# ============================================================================
+with pricer_tab2:
+    st.subheader("Price an Options Strategy")
+    
+    from trading_game.core.option_pricer import Strategy, Greeks as StrategyGreeks
+
+    # ---------- STRATEGY TYPE SUR UNE LIGNE SEULE ----------
+    st.markdown(
+        "<span style='color:white; font-weight:bold;'>Strategy Type</span>",
+        unsafe_allow_html=True
+    )
+    strat_type_label = st.selectbox(
+        "",
+        [
+            "Call Spread", "Put Spread", "Straddle", "Strangle",
+            "Call Calendar Spread", "Put Calendar Spread",
+            "Bull Risk Reversal", "Bear Risk Reversal",
+            "Call Butterfly", "Put Butterfly",
+        ],
+        key="strat_pricer_type",
+        label_visibility="collapsed"
+    )
+
+    # Spot & taux cachés (comme pour la single option)
+    strat_spot = float(st.session_state.stock.last_price)
+    strat_rf = 0.02
+
+    # ---------- INPUTS À GAUCHE / RÉSULTATS À DROITE ----------
+    input_col, result_col = st.columns([2, 1])
+
+    # ===== COLONNE GAUCHE : MARKET + STRIKES =====
+    with input_col:
+        # ---- Market parameters ----
+        st.markdown(
+            "<br><span style='color:white; font-weight:bold;'>Market Parameters</span>",
+            unsafe_allow_html=True
+        )
+
+        # Vol (avec wrapper vol_green si tu as ajouté le CSS)
+        st.markdown(
+            "<span style='color:white;'>Volatility (σ)</span>",
+            unsafe_allow_html=True
+        )
+        st.markdown('<div class="vol_green">', unsafe_allow_html=True)
+        strat_vol = st.number_input(
+            "",
+            value=float(st.session_state.stock.last_vol),
+            min_value=0.01,
+            max_value=3.0,
+            step=0.01,
+            format="%.4f",
+            key="strat_pricer_vol",
+            label_visibility="collapsed"
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        # ---- Maturité ----
+        if strat_type_label in ["Call Calendar Spread", "Put Calendar Spread"]:
+            # Deux maturités : short & long
+            st.markdown(
+                "<span style='color:white;'>Short Leg – Days to Expiry</span>",
+                unsafe_allow_html=True
+            )
+            strat_short_days = st.slider(
+                "",
+                min_value=1,
+                max_value=365,
+                value=30,
+                key="strat_pricer_dte_short",
+                label_visibility="collapsed"
+            )
+            st.markdown(
+                "<span style='color:white;'>Long Leg – Days to Expiry</span>",
+                unsafe_allow_html=True
+            )
+            strat_long_days = st.slider(
+                "",
+                min_value=2,
+                max_value=730,
+                value=180,
+                key="strat_pricer_dte_long",
+                label_visibility="collapsed"
+            )
+            t_short = strat_short_days / 365.0
+            t_long = strat_long_days / 365.0
+        else:
+            st.markdown(
+                "<span style='color:white;'>Days to Expiry</span>",
+                unsafe_allow_html=True
+            )
+            strat_maturity_days = st.slider(
+                "",
+                min_value=1,
+                max_value=365,
+                value=30,
+                key="strat_pricer_dte",
+                label_visibility="collapsed"
+            )
+            strat_maturity = strat_maturity_days / 365.0  # en années
+
+        # ---- Strikes ----
+        st.markdown(
+            "<br><span style='color:white; font-weight:bold;'>Strikes</span>",
+            unsafe_allow_html=True
+        )
+
+        # 1 strike : Straddle + Calendar spreads
+        if strat_type_label in ["Straddle", "Call Calendar Spread", "Put Calendar Spread"]:
+            label_strike = "Strike (ATM)" if strat_type_label == "Straddle" else "Strike"
+            st.markdown(
+                f"<span style='color:white;'>{label_strike}</span>",
+                unsafe_allow_html=True
+            )
+            strat_k = st.number_input(
+                "",
+                value=float(strat_spot),
+                step=1.0,
+                key="strat_pricer_k",
+                label_visibility="collapsed"
+            )
+
+        # 2 strikes : spreads, strangle, risk reversals
+        elif strat_type_label in [
+            "Call Spread", "Put Spread", "Strangle",
+            "Bull Risk Reversal", "Bear Risk Reversal"
+        ]:
+            st.markdown(
+                "<span style='color:white;'>Strike 1</span>",
+                unsafe_allow_html=True
+            )
+            strat_k1 = st.number_input(
+                "",
+                value=float(strat_spot - 5),
+                step=1.0,
+                key="strat_pricer_k1",
+                label_visibility="collapsed"
+            )
+
+            st.markdown(
+                "<span style='color:white;'>Strike 2</span>",
+                unsafe_allow_html=True
+            )
+            strat_k2 = st.number_input(
+                "",
+                value=float(strat_spot + 5),
+                step=1.0,
+                key="strat_pricer_k2",
+                label_visibility="collapsed"
+            )
+
+        # 3 strikes : butterflies
+        elif strat_type_label in ["Call Butterfly", "Put Butterfly"]:
+            st.markdown(
+                "<span style='color:white;'>Strike 1 (Low)</span>",
+                unsafe_allow_html=True
+            )
+            strat_k1_fly = st.number_input(
+                "",
+                value=float(strat_spot - 10),
+                step=1.0,
+                key="strat_pricer_k1_fly",
+                label_visibility="collapsed"
+            )
+
+            st.markdown(
+                "<span style='color:white;'>Strike 2 (Mid)</span>",
+                unsafe_allow_html=True
+            )
+            strat_k2_fly = st.number_input(
+                "",
+                value=float(strat_spot),
+                step=1.0,
+                key="strat_pricer_k2_fly",
+                label_visibility="collapsed"
+            )
+
+            st.markdown(
+                "<span style='color:white;'>Strike 3 (High)</span>",
+                unsafe_allow_html=True
+            )
+            strat_k3_fly = st.number_input(
+                "",
+                value=float(strat_spot + 10),
+                step=1.0,
+                key="strat_pricer_k3_fly",
+                label_visibility="collapsed"
+            )
+
+    # ===== COLONNE DROITE : RESULTS + GREEKS =====
+    with result_col:
+        st.markdown(
+            "<br><span style='color:white; font-weight:bold;'>Results</span>",
+            unsafe_allow_html=True
+        )
+
+        # Construction de la stratégie en fonction du type choisi
+        if strat_type_label == "Call Spread":
+            strategy = Strategy.call_spread(
+                k1=strat_k1,
+                k2=strat_k2,
+                t=strat_maturity,
+                r=strat_rf
+            )
+        elif strat_type_label == "Put Spread":
+            strategy = Strategy.put_spread(
+                k1=strat_k1,
+                k2=strat_k2,
+                t=strat_maturity,
+                r=strat_rf
+            )
+        elif strat_type_label == "Straddle":
+            strategy = Strategy.straddle(
+                k=strat_k,
+                t=strat_maturity,
+                r=strat_rf
+            )
+        elif strat_type_label == "Strangle":
+            strategy = Strategy.strangle(
+                k1=strat_k1,
+                k2=strat_k2,
+                t=strat_maturity,
+                r=strat_rf
+            )
+        elif strat_type_label == "Call Calendar Spread":
+            strategy = Strategy.calendar_spread(
+                k=strat_k,
+                t1=t_short,
+                t2=t_long,
+                r=strat_rf,
+                option_type="call"
+            )
+        elif strat_type_label == "Put Calendar Spread":
+            strategy = Strategy.calendar_spread(
+                k=strat_k,
+                t1=t_short,
+                t2=t_long,
+                r=strat_rf,
+                option_type="put"
+            )
+        elif strat_type_label == "Bull Risk Reversal":
+            strategy = Strategy.risk_reversal_bullish(
+                k1=strat_k1,
+                k2=strat_k2,
+                t=strat_maturity,
+                r=strat_rf
+            )
+        elif strat_type_label == "Bear Risk Reversal":
+            strategy = Strategy.risk_reversal_bearish(
+                k1=strat_k1,
+                k2=strat_k2,
+                t=strat_maturity,
+                r=strat_rf
+            )
+        elif strat_type_label == "Call Butterfly":
+            strategy = Strategy.butterfly(
+                k1=strat_k1_fly,
+                k2=strat_k2_fly,
+                k3=strat_k3_fly,
+                t=strat_maturity,
+                r=strat_rf,
+                option_type="call"
+            )
+        elif strat_type_label == "Put Butterfly":
+            strategy = Strategy.butterfly(
+                k1=strat_k1_fly,
+                k2=strat_k2_fly,
+                k3=strat_k3_fly,
+                t=strat_maturity,
+                r=strat_rf,
+                option_type="put"
+            )
+
+        # ----- STRATEGY PRICE EN ROUGE & GRAS -----
+        strategy_price = strategy.price(strat_spot, strat_vol)
+        st.markdown(
+            "<span style='color:white; font-weight:bold;'>Strategy Price</span>",
+            unsafe_allow_html=True
+        )
+        st.markdown(
+            f"<div style='font-size:32px; font-weight:bold; color:#ff4b4b;'>"
+            f"${strategy_price:.4f}</div>",
+            unsafe_allow_html=True
+        )
+
+        # ----- GREEKS OPTIONNELS DANS UN EXPANDER -----
+        strat_greeks_calc = StrategyGreeks(strategy=strategy)
+        strat_greeks = strat_greeks_calc.all_greeks(strat_spot, strat_vol)
+
+        with st.expander("Show Greeks", expanded=False):
+            st.markdown(
+                "<span style='color:white; font-weight:bold;'>Greeks</span>",
+                unsafe_allow_html=True
+            )
+
+            st.markdown(
+                f"<span style='font-weight:bold;'>Delta:</span> {strat_greeks['delta']:.4f}",
+                unsafe_allow_html=True
+            )
+            st.markdown(
+                f"<span style='font-weight:bold;'>Gamma:</span> {strat_greeks['gamma']:.6f}",
+                unsafe_allow_html=True
+            )
+            st.markdown(
+                f"<span style='font-weight:bold;'>Vega:</span> {strat_greeks['vega']:.4f}",
+                unsafe_allow_html=True
+            )
+            st.markdown(
+                f"<span style='font-weight:bold;'>Theta:</span> {strat_greeks['theta']:.6f}",
+                unsafe_allow_html=True
+            )
+            st.markdown(
+                f"<span style='font-weight:bold;'>Rho:</span> {strat_greeks['rho']:.6f}",
+                unsafe_allow_html=True
+            )
