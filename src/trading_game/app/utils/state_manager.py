@@ -14,6 +14,16 @@ def initial_settings() -> None:
     st.session_state.street = Street.street()
     st.session_state.book = Book()
     st.session_state.order_executor = OrderExecutor(max_position_size=MAX_OPTION_POSITION)
+
+    # Quote request
+    st.session_state.quote_request = None
+    st.session_state.quote_request_history = list()
+    st.session_state.result = None
+    st.session_state.quote_chat_history = list()
+    st.session_state.pending_quote = None
+    st.session_state.last_quote_tick = 0
+    st.session_state.quote_cleared_tick = -999
+
     st.session_state.cash = STARTING_CASH
     st.session_state.starting_cash = STARTING_CASH
     st.session_state.positions = []
@@ -54,3 +64,48 @@ def update_state_on_autorefresh() -> None:
             st.session_state.tick_count = tick_count
             st.session_state.pnl_history = pnl_history
             st.session_state.positions = positions
+
+def add_quote_request(message: str, quote_id: str) -> None:
+    """Add a new quote request to the chat"""
+    st.session_state.quote_chat_history.append({
+        'type': 'request',
+        'message': message,
+        'quote_id': quote_id,
+        'timestamp': datetime.now().strftime("%H:%M:%S")
+    })
+    st.session_state.pending_quote = quote_id
+
+def add_player_response(quote_id: str, bid: float, ask: float) -> None:
+    """Add player's bid/ask response to the chat"""
+    st.session_state.quote_chat_history.append({
+        'type': 'player_response',
+        'quote_id': quote_id,
+        'bid': bid,
+        'ask': ask,
+        'timestamp': datetime.now().strftime("%H:%M:%S")
+    })
+
+def add_market_response(quote_id: str, final_answer:str) -> None:
+    st.session_state.quote_chat_history.append({
+        'type': 'market_response',
+        'quote_id': quote_id,
+        'message': final_answer,
+        'timestamp': datetime.now().strftime("%H:%M:%S")
+    })
+
+    # Process result if exists (add trade to book)
+    if st.session_state.result:
+        book = st.session_state.book
+        book.add_trade_strategy(
+            st.session_state.quote_request.strat,
+            st.session_state.quote_request.quantity,
+            st.session_state.stock.last_price,
+            st.session_state.stock.last_vol)  # check if right spot ref
+        st.session_state.book = book
+
+    st.session_state.quote_cleared_tick = st.session_state.tick_count
+    st.session_state.pending_quote = None
+
+def clear_chat() -> None:
+    """Clear the chat history"""
+    st.session_state.quote_chat_history = list()
