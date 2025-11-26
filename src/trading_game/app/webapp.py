@@ -11,7 +11,7 @@ from streamlit_autorefresh import st_autorefresh
 from trading_game.config.settings import REFRESH_INTERVAL, RF
 from trading_game.core.quote_request import QuoteRequest
 from trading_game.core.book import Book
-from trading_game.core.option_pricer import Option, Strategy
+from trading_game.core.option_pricer import Option, Strategy, Greeks
 from trading_game.core.manual_trading import (
     OrderExecutor, VanillaOrder, StrategyOrder,
     OrderSide, OrderType, StrategyType
@@ -1668,8 +1668,7 @@ with pricer_tab1:
             "<br><span style='color:white; font-weight:bold;'>Results</span>",
             unsafe_allow_html=True
         )
-
-        from trading_game.core.option_pricer import Option, Greeks
+        # Option object
 
         pricer_option = Option(
             K=pricer_strike,
@@ -1731,8 +1730,6 @@ st.divider()
 with pricer_tab2:
     st.subheader("Price an Options Strategy")
     
-    from trading_game.core.option_pricer import Strategy, Greeks as StrategyGreeks
-
     # ---------- STRATEGY TYPE SUR UNE LIGNE SEULE ----------
     st.markdown(
         "<span style='color:white; font-weight:bold;'>Strategy Type</span>",
@@ -1752,7 +1749,7 @@ with pricer_tab2:
 
     # Spot & taux cachés (comme pour la single option)
     strat_spot = float(st.session_state.stock.last_price)
-    strat_rf = 0.02
+    strat_rf = RF
 
     # ---------- INPUTS À GAUCHE / RÉSULTATS À DROITE ----------
     input_col, result_col = st.columns([2, 1])
@@ -2012,7 +2009,7 @@ with pricer_tab2:
         )
 
         # ----- GREEKS OPTIONNELS DANS UN EXPANDER -----
-        strat_greeks_calc = StrategyGreeks(strategy=strategy)
+        strat_greeks_calc = Greeks(strategy=strategy)
         strat_greeks = strat_greeks_calc.all_greeks(strat_spot, strat_vol)
 
         with st.expander("Show Greeks", expanded=False):
