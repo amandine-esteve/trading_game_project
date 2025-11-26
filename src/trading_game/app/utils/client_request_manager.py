@@ -18,7 +18,7 @@ def manage_quote_requests(current_tick: int) -> None:
     hard: Literal['hard'] = 'hard'
 
     # Clear chat one tick after market response
-    if current_tick == st.session_state.quote_cleared_tick + 2:
+    if current_tick == st.session_state.quote_cleared_tick + 3:
         clear_chat()
 
         # Reset for next quote
@@ -27,7 +27,7 @@ def manage_quote_requests(current_tick: int) -> None:
 
     # Check if it's time for a new quote request
     # First quote at tick 3, then every 3 ticks after previous quote
-    if current_tick == 3 and st.session_state.last_quote_tick == 0:
+    if current_tick >= 3 and st.session_state.last_quote_tick == 0:
         # First quote request
         investor = random.choice(st.session_state.street.investors)
         level = easy if len(st.session_state.quote_request_history) <= 3 else hard
@@ -41,7 +41,7 @@ def manage_quote_requests(current_tick: int) -> None:
         st.session_state.last_quote_tick = current_tick
 
     elif (st.session_state.quote_cleared_tick > 0 and
-          current_tick == st.session_state.quote_cleared_tick + 3):
+          current_tick == st.session_state.quote_cleared_tick + 4):
         # New quote request 3 ticks after the last one was cleared
         investor = random.choice(st.session_state.street.investors)
         level = easy if len(st.session_state.quote_request_history) <= 3 else hard
