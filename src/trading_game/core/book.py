@@ -15,7 +15,7 @@ class Book(BaseModel):
 
     trades: Dict[str, Tuple[Strategy, int, float]] = Field(default_factory=dict, description="Trade positions: {ref_key: (Strategy, quantity, entry_price)}")
     stocks: Dict[str, Tuple[Stock, int, float]] = Field(default_factory=dict, description="Trade positions: {ref_key: (Stock, quantity, entry_price)}") # in case we add multiple stocks later
-    stock_quantity: int = Field(0, description="Number of stock shares held")
+    stock_quantity: int = Field(default=0, description="Number of stock shares held")
     trade_history: Dict[str, Tuple[str, float, int, float, str, str]] = Field(default_factory=dict, description="Trade history: {trade_id: (time, spot_ref, quantity, price, asset_type, ref_key)}")
 
     @staticmethod
@@ -56,7 +56,7 @@ class Book(BaseModel):
 
         return trade_id
 
-    def add_trade_stock(self, stock: Stock, quantity: int, spot_ref: float, volatility: float) -> str:
+    def add_trade_stock(self, stock: Stock, quantity: int, spot_ref: float, vol_ref: float) -> str:
         """Update the quantity of the underlying stock and keep a track record of the trade"""
 
         # Generate trade_id for the strategy trade according to time
