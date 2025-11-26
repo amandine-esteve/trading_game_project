@@ -21,20 +21,22 @@ def render_main_layout() -> None:
     render_side_bar()
     render_header()
 
-    # First computations -> to update with Book methods
-    portfolio_value = calculate_total_portfolio_value()
-    pnl = portfolio_value - st.session_state.starting_cash
-    pnl_pct = (pnl / st.session_state.starting_cash) * 100
-    risk_score = calculate_risk_score()
-    portfolio_greeks = calculate_portfolio_greeks()
+    # First computations
+    spot_ref = st.session_state.stock.last_price
+    vol_ref = st.session_state.stock.last_vol
+    book = st.session_state.book
+    portfolio_value = book.compute_book_value(spot_ref, vol_ref)
+    total_portfolio_value = portfolio_value + st.session_state.cash
+    portfolio_greeks = book.compute_greeks(spot_ref, vol_ref)
+    risk_score = calculate_risk_score() # implement scoring method
 
     # METRICS
-    render_top_metrics(portfolio_value, pnl, pnl_pct, risk_score)
+    render_top_metrics(total_portfolio_value, portfolio_value, risk_score)
 
     # ============================================================================
     # MARKET OVERVIEW
     # ============================================================================
-    render_market_overview(pnl, portfolio_greeks)
+    render_market_overview(portfolio_value, portfolio_greeks)
 
     # ============================================================================
     # POSITIONS TABLE -> refactor

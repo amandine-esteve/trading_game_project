@@ -22,7 +22,7 @@ def main() -> None:
     # Auto-refresh (AFTER initialization)
     if not st.session_state.trading_paused and not st.session_state.game_over:
         st_autorefresh(interval=REFRESH_INTERVAL, key="price_refresh")
-    update_state_on_autorefresh()
+        update_state_on_autorefresh()
 
     # Main layout
     render_main_layout()

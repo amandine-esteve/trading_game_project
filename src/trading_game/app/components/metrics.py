@@ -1,7 +1,8 @@
 import streamlit as st
 
-def render_top_metrics(portfolio_value, pnl, pnl_pct, risk_score) -> None:
+def render_top_metrics(total_portfolio_value, pnl, risk_score) -> None:
     col1, col2, col3, col4, col5 = st.columns(5)
+    pnl_pct = (pnl / st.session_state.starting_cash) * 100
 
     with col1:
         st.metric(
@@ -12,14 +13,13 @@ def render_top_metrics(portfolio_value, pnl, pnl_pct, risk_score) -> None:
         )
 
     with col2:
-        st.metric(
-            "Portfolio Value",
-            f"${portfolio_value:,.0f}",
-            delta=f"{pnl_pct:.2f}%"
-        )
+        st.metric("P&L", f"${pnl:,.0f}", delta=f"{pnl_pct:.2f}%")
 
     with col3:
-        st.metric("P&L", f"${pnl:,.0f}", delta=f"{pnl_pct:.1f}%")
+        st.metric(
+            "Portfolio Value",
+            f"${total_portfolio_value:,.0f}"
+        )
 
     with col4:
         st.metric("Cash", f"${st.session_state.cash:,.0f}")

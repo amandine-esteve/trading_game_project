@@ -1,6 +1,8 @@
 import numpy as np
 import streamlit as st
 
+from trading_game.config.settings import TRANSACTION_COST
+
 
 
 def render_trading_delta(portfolio_greeks) -> None:
@@ -15,7 +17,7 @@ def render_trading_delta(portfolio_greeks) -> None:
         st.markdown(f"**Recommended Hedge:** {recommended_hedge:+.0f} shares")
 
     with hedge_col2:
-        futures_qty = st.number_input(
+        stock_qty = st.number_input(
             "Stock Quantity",
             min_value=-10000,
             max_value=10000,
@@ -24,36 +26,36 @@ def render_trading_delta(portfolio_greeks) -> None:
             help="Positive = Long, Negative = Short"
         )
 
-        futures_cost = abs(futures_qty) * 0.5
-        st.caption(f"Transaction cost: ${futures_cost:.2f}")
+        transaction_cost = abs(stock_qty) * st.session_state.stock.last_price * TRANSACTION_COST
+        st.caption(f"Transaction cost: ${transaction_cost:.2f}")
 
     with hedge_col3:
         st.write("")
         st.write("")
         if st.button("⚡ Execute Hedge", type="primary"):
-            if st.session_state.cash >= futures_cost:
-                if st.session_state.futures_position == 0 or np.sign(futures_qty) == np.sign(
+            if st.session_state.cash >= transaction_cost:
+                if st.session_state.futures_position == 0 or np.sign(stock_qty) == np.sign(
                         st.session_state.futures_position):
-                    total_position = st.session_state.futures_position + futures_qty
+                    total_position = st.session_state.futures_position + stock_qty
                     if st.session_state.futures_position == 0:
                         st.session_state.futures_entry_price = st.session_state.stock.last_price
                     else:
                         old_notional = st.session_state.futures_position * st.session_state.futures_entry_price
-                        new_notional = futures_qty * st.session_state.stock.last_price
+                        new_notional = stock_qty * st.session_state.stock.last_price
                         st.session_state.futures_entry_price = (old_notional + new_notional) / total_position
                     st.session_state.futures_position = total_position
                 else:
-                    st.session_state.futures_position += futures_qty
+                    st.session_state.futures_position += stock_qty
                     if st.session_state.futures_position == 0:
                         st.session_state.pop('futures_entry_price', None)
 
-                st.session_state.cash -= futures_cost
+                st.session_state.cash -= transaction_cost
                 st.success(f"Hedge executed! New position: {st.session_state.futures_position:+.0f}")
 
                 # ADD TRADE TO BOOK
                 st.session_state.book.add_trade_stock(
                     st.session_state.stock,
-                    futures_qty,
+                    stock_qty,
                     st.session_state.stock.last_price,
                     st.session_state.stock.last_vol)
 

@@ -16,11 +16,9 @@ def render_current_positions() -> None:
             # Handle different position types
             if 'strike' in pos:  # Vanilla
                 strike = pos['strike']
-                option_type = pos['type']
             elif 'strikes' in pos:  # Strategy
                 # Example: for call spread, take average strike for valuation
                 strike = sum(pos['strikes']) / len(pos['strikes'])
-                option_type = pos.get('type', 'strategy')
             else:
                 st.warning(f"Skipping position {idx} — no strike info")
                 continue
@@ -64,42 +62,44 @@ def render_current_positions() -> None:
             })
 
         df_positions = pd.DataFrame(positions_data)
+        st.markdown("#### Option Positions")
         st.table(df_positions)
 
-        close_col1, close_col2 = st.columns([3, 1])
-        with close_col1:
-            position_to_close = st.selectbox("Select position to close",
-                                             [f"ID {p['ID']} - {p['Type']} {p['Strike']}" for p in positions_data])
-        with close_col2:
-            if st.button("❌ Close Position", type="primary"):
-                idx = int(position_to_close.split()[1])
-                pos = st.session_state.positions[idx]
-                current_price = black_scholes(
-                    st.session_state.stock.last_price,
-                    pos['strike'],
-                    pos['time_to_expiry'],
-                    0.02,
-                    0.3,
-                    pos['type']
-                )
-                proceeds = current_price * pos['quantity'] * 100 * pos['side']
-                st.session_state.cash += proceeds
-                st.session_state.positions.pop(idx)
-                st.success(f"Position closed! Proceeds: ${proceeds:.0f}")
-                st.rerun()
+        # close_col1, close_col2 = st.columns([3, 1])
+        # with close_col1:
+        #     position_to_close = st.selectbox("Select position to close",
+        #                                      [f"ID {p['ID']} - {p['Type']} {p['Strike']}" for p in positions_data])
+        # with close_col2:
+        #     if st.button("❌ Close Position", type="primary"):
+        #         idx = int(position_to_close.split()[1])
+        #         pos = st.session_state.positions[idx]
+        #         current_price = black_scholes(
+        #             st.session_state.stock.last_price,
+        #             pos['strike'],
+        #             pos['time_to_expiry'],
+        #             0.02,
+        #             0.3,
+        #             pos['type']
+        #         )
+        #         proceeds = current_price * pos['quantity'] * 100 * pos['side']
+        #         st.session_state.cash += proceeds
+        #         st.session_state.positions.pop(idx)
+        #         st.success(f"Position closed! Proceeds: ${proceeds:.0f}")
+        #         st.rerun()
     else:
         st.info("No open positions")
 
-    st.markdown("### Position")
-    fut_col1, fut_col2, fut_col3 = st.columns(3)
-    with fut_col1:
+    st.markdown("")
+    st.markdown("#### Stock Position")
+    stock_col1, stock_col2, stock_col3 = st.columns(3)
+    with stock_col1:
         st.metric("Position", f"{st.session_state.futures_position:+.0f} shares")
-    with fut_col2:
+    with stock_col2:
         if 'futures_entry_price' in st.session_state and st.session_state.futures_position != 0:
             futures_pnl = (
                                   st.session_state.stock.last_price - st.session_state.futures_entry_price) * st.session_state.futures_position
             st.metric("Futures P&L", f"${futures_pnl:,.0f}")
-    with fut_col3:
+    with stock_col3:
         if st.session_state.futures_position != 0:
             st.metric("Entry Price", f"${st.session_state.get('futures_entry_price', 0):.2f}")
 
