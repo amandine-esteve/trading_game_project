@@ -4,13 +4,16 @@ from datetime import datetime
 from trading_game.config.settings import GAME_DURATION, MAX_OPTION_POSITION, STARTING_CASH
 from trading_game.core.manual_trading import OrderExecutor
 from trading_game.core.book import Book
+from trading_game.models.shock import MarketShock
 from trading_game.models.stock import Stock
 from trading_game.models.street import Street
 
 from trading_game.app.utils.functions import calculate_total_portfolio_value
 
 def initial_settings() -> None:
-    st.session_state.stock = Stock.stock()
+    stock = Stock.stock()
+    st.session_state.stock = stock
+    st.session_state.shock = MarketShock.shock(name=stock.name, sector=stock.sector)
     st.session_state.street = Street.street()
     st.session_state.book = Book()
     st.session_state.order_executor = OrderExecutor(max_position_size=MAX_OPTION_POSITION)
@@ -46,11 +49,12 @@ def update_state_on_autorefresh() -> None:
             st.session_state.game_over = True
         else:
             stock = st.session_state.stock
+            shock = st.session_state.shock.model_dump()
             tick_count = st.session_state.tick_count
             pnl_history = st.session_state.pnl_history
             positions = st.session_state.positions
 
-            stock.move_price()
+            stock.move_stock(shock)
             tick_count += 1
 
             total_pnl = calculate_total_portfolio_value() - st.session_state.starting_cash
