@@ -1,12 +1,15 @@
 import streamlit as st
 
 from trading_game.app.components.graphs import render_stock_chart, render_pnl_chart
+from trading_game.app.components.news_alert import render_news
 from trading_game.app.components.risk_bar import render_risk_bar
 from trading_game.app.utils.styling import get_risk_color
 
 def render_market_overview(pnl, portfolio_greeks) -> None :
     st.markdown('<a id="market-overview"></a>', unsafe_allow_html=True)
     st.header("📊 Market Overview")
+
+    render_news()
 
     chart_col, risk_col = st.columns([2, 1])
     with chart_col:

@@ -1,11 +1,14 @@
 import streamlit as st
 
+from trading_game.app.components.news_alert import render_news
 from trading_game.app.utils.functions import calculate_total_portfolio_value, calculate_risk_score
 from trading_game.config.settings import REFRESH_INTERVAL
 
 def render_side_bar() -> None:
     with st.sidebar:
         st.title("🧭 Navigation")
+        render_news(side_bar=True)
+
         st.markdown("---")
 
         st.sidebar.markdown("""
