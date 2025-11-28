@@ -34,9 +34,9 @@ def initial_settings() -> None:
 
     st.session_state.cash = STARTING_CASH
     st.session_state.starting_cash = STARTING_CASH
-    st.session_state.futures_position = 0
-    st.session_state.trade_history = []
-    st.session_state.pnl_history = [0]
+    st.session_state.futures_position = 0 #why?
+    st.session_state.trade_history = [] #why?
+    st.session_state.pnl_history = [0] # should this be part of book? an attribute pnl history which gets updated in compute_book_pnl method
     st.session_state.tick_count = 0
     st.session_state.game_over = False
 
@@ -69,7 +69,6 @@ def manage_shock(tick_count: int, stock: Stock) -> Dict[str, str | Literal['posi
     return shock_dict
 
 def update_state_on_autorefresh() -> None:
-    book = st.session_state.book
     if not st.session_state.trading_paused and not st.session_state.game_over:
         if st.session_state.tick_count >= st.session_state.game_duration:
             st.session_state.game_over = True
@@ -77,9 +76,8 @@ def update_state_on_autorefresh() -> None:
         else:
             tick_count = st.session_state.tick_count
             stock = st.session_state.stock
-
+            book = st.session_state.book
             pnl_history = st.session_state.pnl_history
-
 
             # Update shock
             shock_dict = manage_shock(tick_count, stock)
@@ -87,10 +85,12 @@ def update_state_on_autorefresh() -> None:
             # Update stock
             stock.move_stock(shock_dict, st.session_state.shocked_vol)
 
-            # Update tick count
-            tick_count += 1
+            # Update PNL history
             total_pnl = book.compute_book_pnl(st.session_state.stock.last_price, st.session_state.stock.last_vol)
             pnl_history.append(total_pnl)
+
+            # Update tick count
+            tick_count += 1
 
             st.session_state.stock = stock
             st.session_state.tick_count = tick_count

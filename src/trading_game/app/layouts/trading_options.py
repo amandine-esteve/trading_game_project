@@ -14,7 +14,7 @@ def render_trading_options() -> None:
 
     # ===== TAB 1: VANILLA OPTIONS =====
     with tab1:
-        st.markdown("#### Buy/Sell Vanilla Options")
+        st.markdown("#### Buy/Sell Single Options")
 
         col1, col2 = st.columns(2)
 
@@ -57,7 +57,7 @@ def render_trading_options() -> None:
             )
 
             # Turn to strategy object
-            VanillaOrderStrategy = vanilla_order.to_strategy()
+            vanilla_order_strategy = vanilla_order.to_strategy()
 
             submitted = st.session_state.order_executor.submit_order(vanilla_order)
             if submitted:
@@ -70,12 +70,11 @@ def render_trading_options() -> None:
                     # Add trade to book
                     book = st.session_state.book
                     book.add_trade_strategy(
-                    VanillaOrderStrategy,
-                    qty*100,
+                    vanilla_order_strategy,
+                    qty * 100,
                     st.session_state.stock.last_price,
                     st.session_state.stock.last_vol)
-
-                    #st.session_state.book = book
+                    st.session_state.book = book
 
                     st.success(f"✅ {side} order executed at ${vanilla_order.executed_price:.4f}")
                     st.info(f"💰 Total cost: ${cost:.2f}")
@@ -87,7 +86,7 @@ def render_trading_options() -> None:
 
     # ===== TAB 2: STRATEGIES =====
     with tab2:
-        st.markdown("#### Execute Option Strategies")
+        st.markdown("#### Execute Option Strategy Trade")
 
         strat_type = st.selectbox(
             "Strategy Type",
@@ -175,7 +174,6 @@ def render_trading_options() -> None:
         with col2:
             # ---- Maturities ----
             if strat_type in ["Call Calendar Spread", "Put Calendar Spread"]:
-                # Deux maturités comme dans ton pricer : short & long
                 short_days_strat = st.slider(
                     "Short Leg - Days to Expiry",
                     1, 365, 30,
@@ -238,7 +236,9 @@ def render_trading_options() -> None:
             )
 
             # Turn to strategy object
-            StrategyOrderStrategy = strategy_order.to_strategy()
+            strategy_order_strategy = strategy_order.to_strategy()
+            #if we use the same function as above the part just below is exactly the same as for single option
+            #write function submit_trade?
 
             submitted = st.session_state.order_executor.submit_order(strategy_order)
             if submitted:
@@ -251,11 +251,10 @@ def render_trading_options() -> None:
                     # Add trade to book
                     book = st.session_state.book
                     book.add_trade_strategy(
-                    StrategyOrderStrategy,
-                    qty_strat*100,
+                    strategy_order_strategy,
+                    qty_strat * 100,
                     st.session_state.stock.last_price,
                     st.session_state.stock.last_vol)
-
                     st.session_state.book = book
 
                     st.success(f"✅ {strat_type} executed at ${strategy_order.net_premium:.4f}")

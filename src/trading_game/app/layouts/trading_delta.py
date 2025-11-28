@@ -32,7 +32,7 @@ def render_trading_delta(portfolio_greeks) -> None:
     with hedge_col3:
         st.write("")
         st.write("")
-        if st.button("⚡ Execute Hedge", type="primary"):
+        if st.button("⚡ Execute Hedge", type="primary"): #missing full plug
             if st.session_state.cash >= transaction_cost:
                 if st.session_state.futures_position == 0 or np.sign(stock_qty) == np.sign(
                         st.session_state.futures_position):

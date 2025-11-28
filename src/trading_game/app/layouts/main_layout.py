@@ -21,7 +21,7 @@ def render_main_layout() -> None:
     render_side_bar()
     render_header()
 
-    # First computations
+    # First computations -> check recomputation
     spot_ref = st.session_state.stock.last_price
     vol_ref = st.session_state.stock.last_vol
     book = st.session_state.book

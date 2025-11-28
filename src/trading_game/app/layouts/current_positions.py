@@ -3,7 +3,6 @@ import streamlit as st
 from datetime import datetime, timedelta
 
 from trading_game.core.option_pricer import Strategy, Greeks
-from trading_game.core.book import Book
 from trading_game.config.settings import BASE
 
 
@@ -14,8 +13,7 @@ def render_current_positions() -> None:
     book = st.session_state.book
 
     if not book.is_empty():
-
-        Book_for_dataframe = []
+        book_for_dataframe = list()
 
         for strat_key, (strategy, quantity, entry_price) in book.trades.items():
             if isinstance(strategy, Strategy):
@@ -30,7 +28,7 @@ def render_current_positions() -> None:
                 strikes = [opt.K for opt in strategy.options]
 
                 # Strategy maturity
-                expiries = [opt.T for opt in strategy.options]
+                maturities = [opt.T for opt in strategy.options]
 
                 # Greeks agrégés de la stratégie
                 greeks = Greeks(strategy=strategy).all_greeks(spot, vol)
@@ -38,7 +36,7 @@ def render_current_positions() -> None:
                 # P&L de la stratégie depuis le book
                 pnl = book.strategy_pnl(strat_key, spot, vol)
 
-                Book_for_dataframe.append({
+                book_for_dataframe.append({
                     'ID': strat_key,
                     'Type': strategy.name.upper(),
                     'Strike': ", ".join(f"${s:.2f}" for s in strikes),
@@ -48,17 +46,18 @@ def render_current_positions() -> None:
                     'P&L': f"${pnl:.0f}",
                     'Delta': f"{greeks['delta'] * quantity:.0f}",
                     'Gamma': f"{greeks['gamma'] * quantity:.2f}",
-                    'Expiry': ", ".join((datetime.now() + timedelta(days=int(T * BASE))).strftime('%Y-%m-%d') for T in expiries)
+                    'Expiry': ", ".join((datetime.now() + timedelta(days=int(T * BASE))).strftime('%Y-%m-%d') for T in maturities)
                 })
 
         st.markdown("#### Option Positions")
-        st.table(pd.DataFrame(Book_for_dataframe))
+        st.table(pd.DataFrame(book_for_dataframe))
 
     else:
         st.info("No open positions")
 
     st.markdown("")
-    st.markdown("#### Stock Position")
+    st.markdown("#### Stock Position") #should be handled via the book as well
+
     stock_col1, stock_col2, stock_col3 = st.columns(3)
     with stock_col1:
         st.metric("Position", f"{st.session_state.futures_position:+.0f} shares")

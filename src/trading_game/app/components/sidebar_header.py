@@ -30,9 +30,11 @@ def render_side_bar() -> None:
 def render_header() -> None:
     st.title("🎯 Options Market Maker Dashboard")
 
-    book = st.session_state.book
     if st.session_state.game_over:
+        book = st.session_state.book
         final_pnl = book.compute_book_value(st.session_state.stock.last_price, st.session_state.stock.last_vol) - st.session_state.starting_cash
+        # why book value and not pnl? why - cash if cash not in book?
+        # +already computed outside function right after, we could compute it right before and pass it as argument to avoid useless recomputation
         final_score = calculate_risk_score(book)
 
         if final_pnl > 0:
@@ -44,7 +46,8 @@ def render_header() -> None:
 
     progress_pct = st.session_state.tick_count / st.session_state.game_duration
     time_remaining = int(
-        ((st.session_state.game_duration - st.session_state.tick_count) * REFRESH_INTERVAL / 1000) // 60)
+        ((st.session_state.game_duration - st.session_state.tick_count) * REFRESH_INTERVAL / 1000) // 60
+    )
 
     col_progress1, col_progress2 = st.columns([4, 1])
     with col_progress1:

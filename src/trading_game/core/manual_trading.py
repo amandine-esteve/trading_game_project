@@ -373,7 +373,7 @@ class OrderExecutor(BaseModel):
             position=1 if order.side == OrderSide.BUY else -1
         )
         
-        market_price = opt.price(S=order.spot_price, sigma=order.volatility)
+        market_price = opt.price(s=order.spot_price, sigma=order.volatility)
         
         # Check if order can execute
         if not order.can_execute(abs(market_price)):
@@ -501,7 +501,7 @@ class OrderExecutor(BaseModel):
             return False
         
         # Prix de marché de la stratégie
-        market_price = abs(strat.price(S=order.spot_price, sigma=order.volatility))
+        market_price = abs(strat.price(s=order.spot_price, sigma=order.volatility))
         order.net_premium = market_price
         
         # Check if order can execute (limit / market)
