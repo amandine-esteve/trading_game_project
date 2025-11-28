@@ -1,22 +1,28 @@
+from typing import Dict, Literal
+
 import streamlit as st
 from datetime import datetime
 
+from trading_game.app.utils.functions import calculate_total_portfolio_value
 from trading_game.config.settings import GAME_DURATION, MAX_OPTION_POSITION, STARTING_CASH
-from trading_game.core.manual_trading import OrderExecutor
 from trading_game.core.book import Book
-from trading_game.models.shock import MarketShock
+from trading_game.core.manual_trading import OrderExecutor
+from trading_game.models.shock import MarketShock, StateShock
 from trading_game.models.stock import Stock
 from trading_game.models.street import Street
 
-from trading_game.app.utils.functions import calculate_total_portfolio_value
 
 def initial_settings() -> None:
     stock = Stock.stock()
     st.session_state.stock = stock
-    st.session_state.shock = MarketShock.shock(name=stock.name, sector=stock.sector)
     st.session_state.street = Street.street()
     st.session_state.book = Book()
     st.session_state.order_executor = OrderExecutor(max_position_size=MAX_OPTION_POSITION)
+
+    # Market shock
+    st.session_state.shock = MarketShock.shock(name=stock.name, sector=stock.sector)
+    st.session_state.shock_happened = False
+    st.session_state.shocked_vol = -999
 
     # Quote request
     st.session_state.quote_request = None
@@ -43,26 +49,54 @@ def initialize_session_state() -> None:
         st.session_state.trading_paused = False
         initial_settings()
 
+def manage_shock(tick_count: int, stock: Stock) -> Dict[str, str | Literal['positive','negative'] | StateShock | float]:
+    shock = st.session_state.shock
+
+    # If more than 20 ticks and shock hasn't already happened a shock happens on the market
+    if shock.shock_state == StateShock.NONE and tick_count >= 12 and not st.session_state.shock_happened:
+        shock.trigger_shock()
+        st.session_state.shock_happened = True
+        st.session_state.shocked_vol = stock.init_vol * shock.vol_spike
+
+    # If the shock just happened, the effect starts fading
+    elif shock.shock_state == StateShock.HAPPENING:
+        shock.decay_shock()
+
+    # If the shock is almost gone, back to initial state
+    elif shock.shock_state == StateShock.DECAY and abs(stock.last_vol - stock.init_vol) < 0.01:
+        shock.stop_shock()
+
+    shock_dict = shock.model_dump()
+    st.session_state.shock = shock
+    return shock_dict
+
 def update_state_on_autorefresh() -> None:
     if not st.session_state.trading_paused and not st.session_state.game_over:
         if st.session_state.tick_count >= st.session_state.game_duration:
             st.session_state.game_over = True
+
         else:
-            stock = st.session_state.stock
-            shock = st.session_state.shock.model_dump()
             tick_count = st.session_state.tick_count
+            stock = st.session_state.stock
+
             pnl_history = st.session_state.pnl_history
             positions = st.session_state.positions
 
-            stock.move_stock(shock)
-            tick_count += 1
+            # Update shock
+            shock_dict = manage_shock(tick_count, stock)
 
+            # Update stock
+            stock.move_stock(shock_dict, st.session_state.shocked_vol)
+
+            # Other
             total_pnl = calculate_total_portfolio_value() - st.session_state.starting_cash
             pnl_history.append(total_pnl)
-
             for pos in positions:
                 time_remaining = (pos['expiry_date'] - datetime.now()).total_seconds() / (365 * 24 * 3600)
                 pos['time_to_expiry'] = max(0, time_remaining)
+
+            # Update tick count
+            tick_count += 1
 
             st.session_state.stock = stock
             st.session_state.tick_count = tick_count

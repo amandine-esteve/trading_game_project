@@ -68,30 +68,27 @@ class Stock(BaseModel):
         self.price_history.append(p)
         self.vol_history.append(v)
 
-    def move_stock(self, shock: dict) -> None:
+    def move_stock(self, shock: dict, shocked_vol: float) -> None:
         t = time.time()
         delta_t = t - self.last_time
         dt = delta_t / (252 * 4)  # (252*24*3600)
 
         # If shock is triggered apply it to stock
         if shock["shock_state"].value == StateShock.HAPPENING.value:
-            print("shock")
             price_change = 1 + shock["price_impact"]
             p = self.last_price * price_change
             v = self.init_vol * shock["vol_spike"]
 
-        # If shock already happened, vol is decaying back to initial level
         else:
+            # If shock already happened, vol is decaying back to initial level
             if shock["shock_state"].value == StateShock.DECAY.value:
-                time_since_shock = t - shock["shock_time"]
-                vol_diff = self.last_vol - self.init_vol
+                time_since_shock = (t - shock["shock_time"])
+                vol_diff = shocked_vol - self.init_vol
                 decay = np.exp(-shock["vol_decay_rate"] * time_since_shock)
                 v = self.init_vol + vol_diff * decay
-                print("shock decay")
 
             else:
-                v = self.last_vol
-                print("no shock")
+                v = self.init_vol
 
             drift = (self.rate - 0.5 * v ** 2) * dt
             diffusion = v * np.sqrt(dt) * np.random.normal(0, 1)
