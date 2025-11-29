@@ -65,7 +65,6 @@ def render_trading_options() -> None:
 
                 if success:
                     cost = vanilla_order.executed_price * qty * 100
-                    st.session_state.cash += -cost if side == "Buy" else cost
                     
                     # Add trade to book
                     book = st.session_state.book
@@ -246,7 +245,6 @@ def render_trading_options() -> None:
 
                 if success:
                     cost = strategy_order.net_premium * qty_strat * 100
-                    st.session_state.cash += -cost if side_strat == "Buy" else cost
 
                     # Add trade to book
                     book = st.session_state.book

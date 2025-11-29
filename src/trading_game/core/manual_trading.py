@@ -230,7 +230,7 @@ class StrategyOrder(Order):
         Convert this StrategyOrder into a Strategy object
         (so we can reuse the same pricer/Greeks engine).
         """
-        from trading_game.core.option_pricer import Strategy  # import local pour éviter les circular imports
+        from trading_game.core.option_pricer import Strategy
 
         stype = self.strategy_type
 

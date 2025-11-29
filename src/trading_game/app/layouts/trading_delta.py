@@ -5,7 +5,7 @@ from trading_game.config.settings import TRANSACTION_COST
 
 
 
-def render_trading_delta(portfolio_greeks) -> None:
+def render_trading_delta(portfolio_greeks, cash_available) -> None:
     st.markdown('<a id="hedging"></a>', unsafe_allow_html=True)
     st.header(f"🛡️ Trading Shares - {st.session_state.stock.ticker}")
 
@@ -33,7 +33,7 @@ def render_trading_delta(portfolio_greeks) -> None:
         st.write("")
         st.write("")
         if st.button("⚡ Execute Hedge", type="primary"): #missing full plug
-            if st.session_state.cash >= transaction_cost:
+            if cash_available >= transaction_cost:
                 if st.session_state.futures_position == 0 or np.sign(stock_qty) == np.sign(
                         st.session_state.futures_position):
                     total_position = st.session_state.futures_position + stock_qty
@@ -49,7 +49,7 @@ def render_trading_delta(portfolio_greeks) -> None:
                     if st.session_state.futures_position == 0:
                         st.session_state.pop('futures_entry_price', None)
 
-                st.session_state.cash -= transaction_cost
+                cash_available -= transaction_cost
                 st.success(f"Hedge executed! New position: {st.session_state.futures_position:+.0f}")
 
                 # ADD TRADE TO BOOK

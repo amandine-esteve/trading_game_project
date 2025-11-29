@@ -25,19 +25,19 @@ def render_main_layout() -> None:
     spot_ref = st.session_state.stock.last_price
     vol_ref = st.session_state.stock.last_vol
     book = st.session_state.book
-    portfolio_value = book.compute_book_value(spot_ref, vol_ref)
-    total_portfolio_value = portfolio_value + st.session_state.cash
+    cash_available=book.cash
+    total_portfolio_value = book.compute_book_value(spot_ref, vol_ref)
     portfolio_pnl = book.compute_book_pnl(spot_ref, vol_ref)
     portfolio_greeks = book.compute_greeks(spot_ref, vol_ref)
     risk_score = calculate_risk_score(book) # implement scoring method
 
     # METRICS
-    render_top_metrics(total_portfolio_value, portfolio_pnl, risk_score)
+    render_top_metrics(total_portfolio_value, portfolio_pnl, risk_score, cash_available)
 
     # ============================================================================
     # MARKET OVERVIEW
     # ============================================================================
-    render_market_overview(portfolio_value, portfolio_greeks)
+    render_market_overview(portfolio_pnl, portfolio_greeks)
 
     # ============================================================================
     # POSITIONS TABLE -> refactor
@@ -47,7 +47,7 @@ def render_main_layout() -> None:
     # ============================================================================
     # DELTA -> refactor
     # ============================================================================
-    render_trading_delta(portfolio_greeks)
+    render_trading_delta(portfolio_greeks, cash_available)
 
     # ============================================================================
     # CLIENT REQUESTS

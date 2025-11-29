@@ -1,6 +1,6 @@
 import streamlit as st
 
-def render_top_metrics(total_portfolio_value, pnl, risk_score) -> None:
+def render_top_metrics(total_portfolio_value, pnl, risk_score, cash_available) -> None:
     col1, col2, col3, col4, col5 = st.columns(5)
     pnl_pct = (pnl / st.session_state.starting_cash) * 100
 
@@ -22,7 +22,7 @@ def render_top_metrics(total_portfolio_value, pnl, risk_score) -> None:
         )
 
     with col4:
-        st.metric("Cash", f"${st.session_state.cash:,.0f}")
+        st.metric("Cash", f"${cash_available:,.0f}")
 
     with col5:
         score_color = "🟢" if risk_score > 80 else "🟡" if risk_score > 40 else "🔴"

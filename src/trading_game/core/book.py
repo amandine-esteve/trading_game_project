@@ -5,6 +5,7 @@ import secrets
 
 from trading_game.models.stock import Stock
 from .option_pricer import Strategy, Greeks
+from trading_game.config.settings import STARTING_CASH
 
 class Book(BaseModel):
 
@@ -17,6 +18,7 @@ class Book(BaseModel):
     stocks: Dict[str, Tuple[Stock, int, float]] = Field(default_factory=dict, description="Trade positions: {ref_key: (Stock, quantity, entry_price)}") # in case we add multiple stocks later
     stock_quantity: int = Field(default=0, description="Number of stock shares held")
     trade_history: Dict[str, Tuple[str, float, int,float, int, float, str, str]] = Field(default_factory=dict, description="Trade history: {trade_id: (time, spot_ref, quantity, price, asset_type, ref_key)}")
+    cash: float = Field(default=STARTING_CASH, description="Cash available")
 
     @staticmethod
     def make_strat_key(strategy: Strategy) -> str:
@@ -66,9 +68,12 @@ class Book(BaseModel):
             strat_key           # internal reference key
         )
 
+        # Update the amount of cash available
+        self.cash= self.cash - quantity * trade_price
+
         return trade_id
 
-    def add_trade_stock(self, stock: Stock, quantity: int, spot_ref: float, vol_ref: float) -> str:
+    def add_trade_stock(self, stock: Stock, quantity: int, spot_ref: float, vol_ref: float, cash:float) -> str:
         """Update the quantity of the underlying stock and keep a track record of the trade"""
 
         # Generate trade_id for the strategy trade according to time
@@ -107,6 +112,8 @@ class Book(BaseModel):
             stock.ticker,       # asset type
             stock_key           # internal reference key
         )
+        # Update the amount of cash available
+        self.cash= self.cash - quantity * trade_price
 
         return trade_id
 
@@ -125,6 +132,9 @@ class Book(BaseModel):
         for stock_key, (stock, quantity, entry_price) in self.stocks.items():
             stock_value = quantity * spot_ref
             value += stock_value
+
+        # --- Cash ----
+        value+=self.cash
 
         return value
 

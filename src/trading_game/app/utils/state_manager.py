@@ -32,7 +32,6 @@ def initial_settings() -> None:
     st.session_state.last_quote_tick = 0
     st.session_state.quote_cleared_tick = -999
 
-    st.session_state.cash = STARTING_CASH
     st.session_state.starting_cash = STARTING_CASH
     st.session_state.futures_position = 0 #why?
     st.session_state.trade_history = [] #why?
