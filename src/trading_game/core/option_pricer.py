@@ -2,6 +2,7 @@ import numpy as np
 from scipy.stats import norm
 from typing import Literal, List, Optional
 from pydantic import BaseModel, Field, model_validator
+from trading_game.config.settings import BASE
 
 from trading_game.config.strat_pool import generate_random_strat_data
 
@@ -11,7 +12,6 @@ class Option(BaseModel):
     T: float = Field(..., ge=0, description="Maturity in years, must be >= 0")
     r: float = Field(..., description="Risk-free rate")
     option_type: Literal['call', 'put']
-    base: float = Field(252, description="Base for time calculations, default is 252")
     position: int = Field(1, description="Position: +1 for long, -1 for short") # Default position is long
 
     @model_validator(mode='after')
@@ -33,7 +33,6 @@ class Option(BaseModel):
     def put_price(self, S: float, sigma: float) -> float:
         d1, d2 = self.d1(S, sigma), self.d2(S, sigma)
         return ((self.K * np.exp(-self.r * self.T) * norm.cdf(-d2)) - (S * norm.cdf(-d1))) * self.position
-
     def price(self, S: float, sigma: float) -> float:
         return self.call_price(S, sigma) if self.option_type == 'call' else self.put_price(S, sigma)
 
@@ -162,19 +161,6 @@ class Greeks(BaseModel):
         Calculate Greeks for a single option
         Returns raw Greeks (not multiplied by position or quantity)
         """
-        if option.T == 0:
-            if option.option_type == 'call':
-                delta = option.position * (1.0 if S > option.K else 0.0)
-            else:
-                delta = option.position * (-1.0 if S < option.K else 0.0)
-            
-            return {
-                "delta": delta,
-                "gamma": 0.0,
-                "vega": 0.0,
-                "theta": 0.0,
-                "rho": 0.0
-            }
         
         d1 = option.d1(S, sigma)
         d2 = option.d2(S, sigma)
@@ -190,20 +176,20 @@ class Greeks(BaseModel):
         
         # Vega
         vega = option.position * S * norm.pdf(d1) * np.sqrt(option.T) / 100
-        
+    
         # Theta
         first_term = -(S * norm.pdf(d1) * sigma) / (2 * np.sqrt(option.T))
         if option.option_type == 'call':
             second_term = -option.r * option.K * np.exp(-option.r * option.T) * norm.cdf(d2)
         else:
             second_term = option.r * option.K * np.exp(-option.r * option.T) * norm.cdf(-d2)
-        theta = option.position * (first_term + second_term) / option.base
+        theta = option.position * (first_term + second_term) / BASE
         
         # Rho
         if option.option_type == 'call':
             rho = option.position * option.K * option.T * np.exp(-option.r * option.T) * norm.cdf(d2) / 100
         else:
-            rho = -option.position * option.K * option.T * np.exp(-option.r * option.T) * norm.cdf(-d2) / 100
+            rho = -option.position * option.K * option.T* np.exp(-option.r * option.T) * norm.cdf(-d2) / 100
         
         return {
             "delta": delta,
@@ -269,7 +255,7 @@ class Greeks(BaseModel):
                     "option_type": option.option_type.upper(),
                     "strike": option.K,
                     "maturity": option.T,
-                    "dte": int(option.T * 365),
+                    "dte": int(option.T * BASE),
                     "position": "LONG" if option.position > 0 else "SHORT",
                     "delta": leg_greeks["delta"],
                     "gamma": leg_greeks["gamma"],
@@ -286,7 +272,7 @@ class Greeks(BaseModel):
                 "option_type": self.option.option_type.upper(),
                 "strike": self.option.K,
                 "maturity": self.option.T,
-                "dte": int(self.option.T * 365),
+                "dte": int(self.option.T * BASE),
                 "position": "LONG" if self.option.position > 0 else "SHORT",
                 "delta": leg_greeks["delta"],
                 "gamma": leg_greeks["gamma"],

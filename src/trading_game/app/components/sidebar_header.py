@@ -1,8 +1,9 @@
 import streamlit as st
 
 from trading_game.app.components.news_alert import render_news
-from trading_game.app.utils.functions import calculate_total_portfolio_value, calculate_risk_score
+from trading_game.app.utils.functions import calculate_risk_score
 from trading_game.config.settings import REFRESH_INTERVAL
+from trading_game.core.book import Book
 
 def render_side_bar() -> None:
     with st.sidebar:
@@ -29,9 +30,10 @@ def render_side_bar() -> None:
 def render_header() -> None:
     st.title("🎯 Options Market Maker Dashboard")
 
+    book = st.session_state.book
     if st.session_state.game_over:
-        final_pnl = calculate_total_portfolio_value() - st.session_state.starting_cash
-        final_score = calculate_risk_score()
+        final_pnl = book.compute_book_value(st.session_state.stock.last_price, st.session_state.stock.last_vol) - st.session_state.starting_cash
+        final_score = calculate_risk_score(book)
 
         if final_pnl > 0:
             st.success(f"🎉 GAME OVER - YOU WIN! Final P&L: ${final_pnl:,.0f} | Score: {final_score:.0f}/100")

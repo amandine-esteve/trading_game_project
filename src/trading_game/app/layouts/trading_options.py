@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import streamlit as st
 
 from trading_game.core.manual_trading import VanillaOrder, StrategyOrder, OrderSide, OrderType, StrategyType
-from trading_game.config.settings import RF
+from trading_game.config.settings import RF, BASE
 from trading_game.core.option_pricer import Option, Strategy
 
 
@@ -49,12 +49,15 @@ def render_trading_options() -> None:
                 quantity=qty,
                 option_type=option_type,
                 strike=strike,
-                maturity=days / 365,
+                maturity=days / BASE,
                 spot_price=st.session_state.stock.last_price,
                 volatility=st.session_state.stock.last_vol,
                 risk_free_rate=RF,
                 limit_price=limit_price
             )
+
+            # Turn to strategy object
+            VanillaOrderStrategy = vanilla_order.to_strategy()
 
             submitted = st.session_state.order_executor.submit_order(vanilla_order)
             if submitted:
@@ -63,16 +66,17 @@ def render_trading_options() -> None:
                 if success:
                     cost = vanilla_order.executed_price * qty * 100
                     st.session_state.cash += -cost if side == "Buy" else cost
-                    st.session_state.positions.append({
-                        'type': option_type,
-                        'strike': strike,
-                        'expiry_date': datetime.now() + timedelta(days=days),
-                        'time_to_expiry': days / 365,
-                        'quantity': qty,
-                        'purchase_price': vanilla_order.executed_price,
-                        'side': 1 if side == "Buy" else -1,
-                        'order_id': vanilla_order.order_id
-                    })
+                    
+                    # Add trade to book
+                    book = st.session_state.book
+                    book.add_trade_strategy(
+                    VanillaOrderStrategy,
+                    qty*100,
+                    st.session_state.stock.last_price,
+                    st.session_state.stock.last_vol)
+
+                    #st.session_state.book = book
+
                     st.success(f"✅ {side} order executed at ${vanilla_order.executed_price:.4f}")
                     st.info(f"💰 Total cost: ${cost:.2f}")
                     st.rerun()
@@ -182,8 +186,6 @@ def render_trading_options() -> None:
                     2, 730, 180,
                     key="strat_dte_long"
                 )
-                # Pour l'instant, on continue à utiliser une seule maturité dans StrategyOrder
-                # On prend par exemple la maturité longue pour 'maturity'
                 days_strat = long_days_strat
             else:
                 days_strat = st.slider(
@@ -224,16 +226,19 @@ def render_trading_options() -> None:
                 quantity=qty_strat,
                 strategy_type=strat_type_map[strat_type],
                 strikes=strikes,
-                maturity=days_strat / 365,
-                short_maturity=short_days_strat / 365 if strat_type in ["Call Calendar Spread",
+                maturity=days_strat / BASE,
+                short_maturity=short_days_strat / BASE if strat_type in ["Call Calendar Spread",
                                                                         "Put Calendar Spread"] else None,
-                long_maturity=long_days_strat / 365 if strat_type in ["Call Calendar Spread",
+                long_maturity=long_days_strat / BASE if strat_type in ["Call Calendar Spread",
                                                                       "Put Calendar Spread"] else None,
                 spot_price=st.session_state.stock.last_price,
                 volatility=st.session_state.stock.last_vol,
                 risk_free_rate=RF,
                 limit_price=limit_price_strat
             )
+
+            # Turn to strategy object
+            StrategyOrderStrategy = strategy_order.to_strategy()
 
             submitted = st.session_state.order_executor.submit_order(strategy_order)
             if submitted:
@@ -242,16 +247,17 @@ def render_trading_options() -> None:
                 if success:
                     cost = strategy_order.net_premium * qty_strat * 100
                     st.session_state.cash += -cost if side_strat == "Buy" else cost
-                    st.session_state.positions.append({
-                        'type': strat_type,
-                        'strikes': strikes,
-                        'expiry_date': datetime.now() + timedelta(days=days_strat),
-                        'time_to_expiry': days_strat / 365,
-                        'quantity': qty_strat,
-                        'purchase_price': strategy_order.net_premium,
-                        'side': 1 if side_strat == "Buy" else -1,
-                        'order_id': strategy_order.order_id
-                    })
+
+                    # Add trade to book
+                    book = st.session_state.book
+                    book.add_trade_strategy(
+                    StrategyOrderStrategy,
+                    qty_strat*100,
+                    st.session_state.stock.last_price,
+                    st.session_state.stock.last_vol)
+
+                    st.session_state.book = book
+
                     st.success(f"✅ {strat_type} executed at ${strategy_order.net_premium:.4f}")
                     st.info(f"💰 Total cost: ${cost:.2f}")
                     st.rerun()

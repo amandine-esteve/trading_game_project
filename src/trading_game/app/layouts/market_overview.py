@@ -4,6 +4,9 @@ from trading_game.app.components.graphs import render_stock_chart, render_pnl_ch
 from trading_game.app.components.news_alert import render_news
 from trading_game.app.components.risk_bar import render_risk_bar
 from trading_game.app.utils.styling import get_risk_color
+from trading_game.core.book import Book
+from trading_game.core.option_pricer import Greeks, Strategy
+
 
 def render_market_overview(pnl, portfolio_greeks) -> None :
     st.markdown('<a id="market-overview"></a>', unsafe_allow_html=True)
@@ -27,6 +30,9 @@ def render_market_overview(pnl, portfolio_greeks) -> None :
         st.subheader("⚠️ Risk Dashboard")
 
         st.markdown("#### Portfolio Greeks")
+
+        book=st.session_state.book
+        portfolio_greeks= book.compute_greeks(st.session_state.stock.last_price, st.session_state.stock.last_vol)
 
         delta_color = get_risk_color(portfolio_greeks['delta'], [500, 1500])
         gamma_color = get_risk_color(portfolio_greeks['gamma'], [50, 150])
@@ -59,7 +65,7 @@ def render_market_overview(pnl, portfolio_greeks) -> None :
             st.error(f"⚠️ High Delta Exposure: {portfolio_greeks['delta']:.0f}")
         if abs(portfolio_greeks['gamma']) > 150:
             st.warning(f"⚠️ High Gamma Risk: {portfolio_greeks['gamma']:.2f}")
-        if len(st.session_state.positions) == 0:
+        if not book.is_empty():
             st.info("✅ No positions - No risk")
-
+            
     st.divider()

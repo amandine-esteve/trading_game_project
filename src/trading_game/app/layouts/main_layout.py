@@ -27,11 +27,12 @@ def render_main_layout() -> None:
     book = st.session_state.book
     portfolio_value = book.compute_book_value(spot_ref, vol_ref)
     total_portfolio_value = portfolio_value + st.session_state.cash
+    portfolio_pnl = book.compute_book_pnl(spot_ref, vol_ref)
     portfolio_greeks = book.compute_greeks(spot_ref, vol_ref)
-    risk_score = calculate_risk_score() # implement scoring method
+    risk_score = calculate_risk_score(book) # implement scoring method
 
     # METRICS
-    render_top_metrics(total_portfolio_value, portfolio_value, risk_score)
+    render_top_metrics(total_portfolio_value, portfolio_pnl, risk_score)
 
     # ============================================================================
     # MARKET OVERVIEW

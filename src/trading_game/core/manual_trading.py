@@ -4,6 +4,8 @@ from enum import Enum
 from datetime import datetime
 import time
 
+from trading_game.core.option_pricer import Strategy, Option
+
 class OrderSide(Enum):
     BUY = "Buy"
     SELL = "Sell"
@@ -106,6 +108,28 @@ class VanillaOrder(Order):
             return market_price <= self.limit_price
         else:  # SELL
             return market_price >= self.limit_price
+    
+    def to_strategy(self) -> Strategy:
+        """
+        Convert this vanilla order into a Strategy object with a single leg,
+        so that we can reuse the Strategy pricer / Greeks engine.
+        """
+        from trading_game.core.option_pricer import Option, Strategy
+
+        position = 1 if self.side == OrderSide.BUY else -1
+
+        opt = Option(
+            K=self.strike,
+            T=self.maturity,
+            r=self.risk_free_rate,
+            option_type=self.option_type,
+            position=position
+        )
+
+        return Strategy(
+            name=f"{self.option_type.upper()}",
+            options=[opt]
+        )
 
 
 class StrategyOrder(Order):
@@ -200,6 +224,110 @@ class StrategyOrder(Order):
             return market_price <= self.limit_price
         else:  
             return market_price >= self.limit_price
+    
+    def to_strategy(self) -> "Strategy":
+        """
+        Convert this StrategyOrder into a Strategy object
+        (so we can reuse the same pricer/Greeks engine).
+        """
+        from trading_game.core.option_pricer import Strategy  # import local pour éviter les circular imports
+
+        stype = self.strategy_type
+
+        # ===== 2-LEG SPREADS / STRANGLE / RISK REVERSALS =====
+        if stype == StrategyType.CALL_SPREAD:
+            return Strategy.call_spread(
+                k1=self.strikes[0],
+                k2=self.strikes[1],
+                t=self.maturity,
+                r=self.risk_free_rate,
+            )
+
+        if stype == StrategyType.PUT_SPREAD:
+            return Strategy.put_spread(
+                k1=self.strikes[0],
+                k2=self.strikes[1],
+                t=self.maturity,
+                r=self.risk_free_rate,
+            )
+
+        if stype == StrategyType.STRANGLE:
+            return Strategy.strangle(
+                k1=self.strikes[0],
+                k2=self.strikes[1],
+                t=self.maturity,
+                r=self.risk_free_rate,
+            )
+
+        if stype == StrategyType.BULL_RISK_REVERSAL:
+            return Strategy.risk_reversal_bullish(
+                k1=self.strikes[0],
+                k2=self.strikes[1],
+                t=self.maturity,
+                r=self.risk_free_rate,
+            )
+
+        if stype == StrategyType.BEAR_RISK_REVERSAL:
+            return Strategy.risk_reversal_bearish(
+                k1=self.strikes[0],
+                k2=self.strikes[1],
+                t=self.maturity,
+                r=self.risk_free_rate,
+            )
+
+        # ===== 1-LEG (STRADDLE) =====
+        if stype == StrategyType.STRADDLE:
+            return Strategy.straddle(
+                k=self.strikes[0],
+                t=self.maturity,
+                r=self.risk_free_rate,
+            )
+
+        # ===== CALENDAR SPREADS (1 strike, 2 maturities) =====
+        if stype == StrategyType.CALL_CALENDAR_SPREAD:
+            if self.short_maturity is None or self.long_maturity is None:
+                raise ValueError("Call Calendar Spread requires short_maturity and long_maturity")
+            return Strategy.calendar_spread(
+                k=self.strikes[0],
+                t1=self.short_maturity,
+                t2=self.long_maturity,
+                r=self.risk_free_rate,
+                option_type="call",
+            )
+
+        if stype == StrategyType.PUT_CALENDAR_SPREAD:
+            if self.short_maturity is None or self.long_maturity is None:
+                raise ValueError("Put Calendar Spread requires short_maturity and long_maturity")
+            return Strategy.calendar_spread(
+                k=self.strikes[0],
+                t1=self.short_maturity,
+                t2=self.long_maturity,
+                r=self.risk_free_rate,
+                option_type="put",
+            )
+
+        # ===== BUTTERFLIES (3 strikes) =====
+        if stype == StrategyType.CALL_BUTTERFLY:
+            return Strategy.butterfly(
+                k1=self.strikes[0],
+                k2=self.strikes[1],
+                k3=self.strikes[2],
+                t=self.maturity,
+                r=self.risk_free_rate,
+                option_type="call",
+            )
+
+        if stype == StrategyType.PUT_BUTTERFLY:
+            return Strategy.butterfly(
+                k1=self.strikes[0],
+                k2=self.strikes[1],
+                k3=self.strikes[2],
+                t=self.maturity,
+                r=self.risk_free_rate,
+                option_type="put",
+            )
+
+        raise ValueError(f"Unsupported strategy type for to_strategy(): {stype}")
 
 
 

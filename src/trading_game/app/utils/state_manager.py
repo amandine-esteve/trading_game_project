@@ -3,7 +3,6 @@ from typing import Dict, Literal
 import streamlit as st
 from datetime import datetime
 
-from trading_game.app.utils.functions import calculate_total_portfolio_value
 from trading_game.config.settings import GAME_DURATION, MAX_OPTION_POSITION, STARTING_CASH
 from trading_game.core.book import Book
 from trading_game.core.manual_trading import OrderExecutor
@@ -35,7 +34,6 @@ def initial_settings() -> None:
 
     st.session_state.cash = STARTING_CASH
     st.session_state.starting_cash = STARTING_CASH
-    st.session_state.positions = []
     st.session_state.futures_position = 0
     st.session_state.trade_history = []
     st.session_state.pnl_history = [0]
@@ -71,6 +69,7 @@ def manage_shock(tick_count: int, stock: Stock) -> Dict[str, str | Literal['posi
     return shock_dict
 
 def update_state_on_autorefresh() -> None:
+    book = st.session_state.book
     if not st.session_state.trading_paused and not st.session_state.game_over:
         if st.session_state.tick_count >= st.session_state.game_duration:
             st.session_state.game_over = True
@@ -80,7 +79,7 @@ def update_state_on_autorefresh() -> None:
             stock = st.session_state.stock
 
             pnl_history = st.session_state.pnl_history
-            positions = st.session_state.positions
+
 
             # Update shock
             shock_dict = manage_shock(tick_count, stock)
@@ -88,20 +87,14 @@ def update_state_on_autorefresh() -> None:
             # Update stock
             stock.move_stock(shock_dict, st.session_state.shocked_vol)
 
-            # Other
-            total_pnl = calculate_total_portfolio_value() - st.session_state.starting_cash
-            pnl_history.append(total_pnl)
-            for pos in positions:
-                time_remaining = (pos['expiry_date'] - datetime.now()).total_seconds() / (365 * 24 * 3600)
-                pos['time_to_expiry'] = max(0, time_remaining)
-
             # Update tick count
             tick_count += 1
+            total_pnl = book.compute_book_pnl(st.session_state.stock.last_price, st.session_state.stock.last_vol)
+            pnl_history.append(total_pnl)
 
             st.session_state.stock = stock
             st.session_state.tick_count = tick_count
             st.session_state.pnl_history = pnl_history
-            st.session_state.positions = positions
 
 def add_quote_request(message: str, quote_id: str) -> None:
     """Add a new quote request to the chat"""
