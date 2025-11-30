@@ -48,23 +48,39 @@ def render_trading_options() -> None:
 
         with col2:
             days = st.slider("Days to Expiry", 1, 365, 30, key="vanilla_dte")
-            qty = st.number_input("Quantity", min_value=1, value=1, key="vanilla_qty")
+            qty = st.number_input(
+                "Quantity (lots)", 
+                min_value=1, 
+                value=1, 
+                key="vanilla_qty",
+                help="1 option batch = 100 options"
+            )
+
+            st.caption(f"📦 Total options: {qty * 100}")
+            
             order_type_choice = st.radio(
                 "Order Type", ["Market", "Limit"], horizontal=True, key="vanilla_order_type"
             )
 
             if order_type_choice == "Limit":
                 limit_price = st.number_input(
-                    "Limit Price", min_value=0.01, value=1.0, step=0.1, key="vanilla_limit"
+                    "Limit Price (per option)", 
+                    min_value=0.01, 
+                    value=1.0, 
+                    step=0.1, 
+                    key="vanilla_limit"
                 )
             else:
                 limit_price = None
 
         if st.button("Execute Vanilla Trade", key="btn_vanilla"):
+            #quotity of option here is 100
+            total_quantity = qty * 100
+            
             vanilla_order = VanillaOrder(
                 side=OrderSide.BUY if side == "Buy" else OrderSide.SELL,
                 order_type=OrderType.MARKET if order_type_choice == "Market" else OrderType.LIMIT,
-                quantity=qty,
+                quantity=total_quantity,  
                 option_type=option_type,
                 strike=strike,
                 maturity=days / BASE,
@@ -196,14 +212,27 @@ def render_trading_options() -> None:
                     key="strat_dte"
                 )
 
-            qty_strat = st.number_input("Quantity", min_value=1, value=1, key="strat_qty")
+            qty_strat = st.number_input(
+                "Quantity (lots)", 
+                min_value=1, 
+                value=1, 
+                key="strat_qty",
+                help="1 option batch = 100 options"
+            )
+
+            st.caption(f"📦 Total options: {qty_strat * 100}")
+            
             order_type_strat = st.radio(
                 "Order Type", ["Market", "Limit"], horizontal=True, key="strat_order_type"
             )
 
             if order_type_strat == "Limit":
                 limit_price_strat = st.number_input(
-                    "Limit Price", min_value=0.01, value=1.0, step=0.1, key="strat_limit"
+                    "Limit Price (per option)", 
+                    min_value=0.01, 
+                    value=1.0, 
+                    step=0.1, 
+                    key="strat_limit"
                 )
             else:
                 limit_price_strat = None
@@ -222,10 +251,12 @@ def render_trading_options() -> None:
                 "Put Butterfly": StrategyType.PUT_BUTTERFLY,
             }
 
+            total_quantity_strat = qty_strat * 100
+
             strategy_order = StrategyOrder(
                 side=OrderSide.BUY if side_strat == "Buy" else OrderSide.SELL,
                 order_type=OrderType.MARKET if order_type_strat == "Market" else OrderType.LIMIT,
-                quantity=qty_strat,
+                quantity=total_quantity_strat, 
                 strategy_type=strat_type_map[strat_type],
                 strikes=strikes,
                 maturity=days_strat / BASE,
