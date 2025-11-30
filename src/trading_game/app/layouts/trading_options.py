@@ -1,10 +1,29 @@
-from datetime import datetime, timedelta
-
 import streamlit as st
 
 from trading_game.core.manual_trading import VanillaOrder, StrategyOrder, OrderSide, OrderType, StrategyType
-from trading_game.config.settings import RF
+from trading_game.config.settings import RF, BASE, TRANSACTION_COST
 from trading_game.core.option_pricer import Option, Strategy
+
+def process_trade(order_strategy, execution_price, qty, side) -> None:
+    trade_qty = qty if side == "Buy" else -qty
+    book = st.session_state.book
+    cost = execution_price * trade_qty * 100
+    transaction_cost = execution_price * qty * 100 * TRANSACTION_COST
+    total_cost = cost + transaction_cost
+    if (trade_qty >= 0 and book.cash >= total_cost) or trade_qty <= 0:
+        # Add trade to book
+        book = st.session_state.book
+        book.add_trade_strategy(
+            order_strategy,
+            trade_qty * 100,
+            st.session_state.stock.last_price,
+            st.session_state.stock.last_vol)
+        book.cash -= total_cost
+
+        st.success(f"✅ Order executed at ${execution_price:.4f}")
+        st.info(f"💰 Total cost: ${cost:.2f}")
+    else:
+        st.error("Insufficient cash!")
 
 def render_trading_options() -> None:
     st.markdown('<a name="manual-trading"></a>', unsafe_allow_html=True)
@@ -13,7 +32,7 @@ def render_trading_options() -> None:
 
     # ===== TAB 1: VANILLA OPTIONS =====
     with tab1:
-        st.markdown("#### Buy/Sell Vanilla Options")
+        st.markdown("#### Buy/Sell Single Options")
 
         col1, col2 = st.columns(2)
 
@@ -64,33 +83,22 @@ def render_trading_options() -> None:
                 quantity=total_quantity,  
                 option_type=option_type,
                 strike=strike,
-                maturity=days / 365,
+                maturity=days / BASE,
                 spot_price=st.session_state.stock.last_price,
                 volatility=st.session_state.stock.last_vol,
                 risk_free_rate=RF,
                 limit_price=limit_price
             )
 
+            # Turn to strategy object
+            vanilla_order_strategy = vanilla_order.to_strategy()
+
             submitted = st.session_state.order_executor.submit_order(vanilla_order)
             if submitted:
                 success = st.session_state.order_executor.execute_vanilla_order(vanilla_order, Option)
 
                 if success:
-                    cost = vanilla_order.executed_price * vanilla_order.quantity
-                    st.session_state.cash += -cost if side == "Buy" else cost
-                    st.session_state.positions.append({
-                        'type': option_type,
-                        'strike': strike,
-                        'expiry_date': datetime.now() + timedelta(days=days),
-                        'time_to_expiry': days / 365,
-                        'quantity': vanilla_order.quantity,  
-                        'purchase_price': vanilla_order.executed_price,
-                        'side': 1 if side == "Buy" else -1,
-                        'order_id': vanilla_order.order_id
-                    })
-                    st.success(f"✅ {side} order executed at ${vanilla_order.executed_price:.4f}")
-                    st.info(f"💰 Total cost: ${cost:.2f} ({vanilla_order.quantity} options)")
-                    st.rerun()
+                    process_trade(vanilla_order_strategy, vanilla_order.executed_price, qty, side)
                 else:
                     st.error("❌ Order could not be executed (check limit price)")
             else:
@@ -98,7 +106,7 @@ def render_trading_options() -> None:
 
     # ===== TAB 2: STRATEGIES =====
     with tab2:
-        st.markdown("#### Execute Option Strategies")
+        st.markdown("#### Execute Option Strategy Trade")
 
         strat_type = st.selectbox(
             "Strategy Type",
@@ -186,7 +194,6 @@ def render_trading_options() -> None:
         with col2:
             # ---- Maturities ----
             if strat_type in ["Call Calendar Spread", "Put Calendar Spread"]:
-
                 short_days_strat = st.slider(
                     "Short Leg - Days to Expiry",
                     1, 365, 30,
@@ -252,10 +259,10 @@ def render_trading_options() -> None:
                 quantity=total_quantity_strat, 
                 strategy_type=strat_type_map[strat_type],
                 strikes=strikes,
-                maturity=days_strat / 365,
-                short_maturity=short_days_strat / 365 if strat_type in ["Call Calendar Spread",
+                maturity=days_strat / BASE,
+                short_maturity=short_days_strat / BASE if strat_type in ["Call Calendar Spread",
                                                                         "Put Calendar Spread"] else None,
-                long_maturity=long_days_strat / 365 if strat_type in ["Call Calendar Spread",
+                long_maturity=long_days_strat / BASE if strat_type in ["Call Calendar Spread",
                                                                       "Put Calendar Spread"] else None,
                 spot_price=st.session_state.stock.last_price,
                 volatility=st.session_state.stock.last_vol,
@@ -263,26 +270,15 @@ def render_trading_options() -> None:
                 limit_price=limit_price_strat
             )
 
+            # Turn to strategy object
+            strategy_order_strategy = strategy_order.to_strategy()
+
             submitted = st.session_state.order_executor.submit_order(strategy_order)
             if submitted:
                 success = st.session_state.order_executor.execute_strategy_order(strategy_order, Strategy)
 
                 if success:
-                    cost = strategy_order.net_premium * strategy_order.quantity
-                    st.session_state.cash += -cost if side_strat == "Buy" else cost
-                    st.session_state.positions.append({
-                        'type': strat_type,
-                        'strikes': strikes,
-                        'expiry_date': datetime.now() + timedelta(days=days_strat),
-                        'time_to_expiry': days_strat / 365,
-                        'quantity': strategy_order.quantity,  
-                        'purchase_price': strategy_order.net_premium,
-                        'side': 1 if side_strat == "Buy" else -1,
-                        'order_id': strategy_order.order_id
-                    })
-                    st.success(f"✅ {strat_type} executed at ${strategy_order.net_premium:.4f}")
-                    st.info(f"💰 Total cost: ${cost:.2f} ({strategy_order.quantity} options)")
-                    st.rerun()
+                    process_trade(strategy_order_strategy, strategy_order.net_premium, qty_strat, side_strat)
                 else:
                     st.error("❌ Strategy could not be executed (check limit price)")
             else:

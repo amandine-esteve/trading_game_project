@@ -1,7 +1,7 @@
 import streamlit as st
 
 from trading_game.app.components.news_alert import render_news
-from trading_game.app.utils.functions import calculate_total_portfolio_value, calculate_risk_score
+#from trading_game.app.utils.functions import calculate_risk_score
 from trading_game.config.settings import REFRESH_INTERVAL
 
 def render_side_bar() -> None:
@@ -27,7 +27,7 @@ def render_side_bar() -> None:
         st.caption(f"🎮 Status: {'PAUSED' if st.session_state.trading_paused else 'ACTIVE'}")
         st.caption(f"🏁 Game: {'OVER' if st.session_state.game_over else 'IN PROGRESS'}")
 
-def render_header() -> None:
+def render_header(portfolio_pnl: float, score: float) -> None:
     
     col1, col2 = st.columns([0.5, 5])
 
@@ -40,8 +40,8 @@ def render_header() -> None:
         """, unsafe_allow_html=True)
 
     if st.session_state.game_over:
-        final_pnl = calculate_total_portfolio_value() - st.session_state.starting_cash
-        final_score = calculate_risk_score()
+        final_pnl = portfolio_pnl
+        final_score = score
 
         if final_pnl > 0:
             st.success(f"🎉 GAME OVER - YOU WIN! Final P&L: ${final_pnl:,.0f} | Score: {final_score:.0f}/100")
@@ -52,7 +52,8 @@ def render_header() -> None:
 
     progress_pct = st.session_state.tick_count / st.session_state.game_duration
     time_remaining = int(
-        ((st.session_state.game_duration - st.session_state.tick_count) * REFRESH_INTERVAL / 1000) // 60)
+        ((st.session_state.game_duration - st.session_state.tick_count) * REFRESH_INTERVAL / 1000) // 60
+    )
 
     col_progress1, col_progress2 = st.columns([4, 1])
     with col_progress1:

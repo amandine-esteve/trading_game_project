@@ -1,7 +1,6 @@
 import streamlit as st
 
 from trading_game.app.components.pricer_tabs import render_single_option_pricing_tab, render_vanilla_strategy_pricing_tab
-from trading_game.core.option_pricer import Option, Strategy, Greeks
 
 def render_pricer_tool() -> None:
     st.markdown('<a id="pricer"></a>', unsafe_allow_html=True)
