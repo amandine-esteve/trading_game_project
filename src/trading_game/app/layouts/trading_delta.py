@@ -1,4 +1,3 @@
-import numpy as np
 import streamlit as st
 
 from trading_game.config.settings import TRANSACTION_COST
@@ -41,15 +40,14 @@ def render_trading_delta(portfolio_greeks, cash_available) -> None:
 
                 # ADD TRADE TO BOOK
                 st.session_state.book.add_trade_stock(
-                    st.session_state.stock,
+                    stock,
                     stock_qty,
-                    st.session_state.stock.last_price,
-                    st.session_state.stock.last_vol)
+                    stock.last_price,
+                    )
 
-                book.cash -= transaction_cost
+                book.cash -= (stock_qty * stock.last_price + transaction_cost)
                 st.success(f"Hedge executed! New position: {book.stocks[stock.ticker][1]:+.0f}")
-                
-                st.rerun()
+
             else:
                 st.error("Insufficient cash for transaction cost!")
 

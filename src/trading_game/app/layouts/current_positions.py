@@ -68,5 +68,6 @@ def render_current_positions() -> None:
             st.metric("Position", f"{0:+.0f} shares")
     with stock_col2:
         if not book.is_empty_stock():
-                st.metric("Futures P&L", f"${book.stocks_pnl(spot,vol):,.0f}")
+                st.metric("Stock P&L", f"${book.stocks_pnl(spot):,.0f}")
+
     st.divider()

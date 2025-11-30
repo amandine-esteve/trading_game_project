@@ -1,9 +1,8 @@
 import streamlit as st
 
 from trading_game.app.components.news_alert import render_news
-from trading_game.app.utils.functions import calculate_risk_score
+#from trading_game.app.utils.functions import calculate_risk_score
 from trading_game.config.settings import REFRESH_INTERVAL
-from trading_game.core.book import Book
 
 def render_side_bar() -> None:
     with st.sidebar:
@@ -27,15 +26,12 @@ def render_side_bar() -> None:
         st.caption(f"🎮 Status: {'PAUSED' if st.session_state.trading_paused else 'ACTIVE'}")
         st.caption(f"🏁 Game: {'OVER' if st.session_state.game_over else 'IN PROGRESS'}")
 
-def render_header() -> None:
+def render_header(portfolio_pnl: float, score: float) -> None:
     st.title("🎯 Options Market Maker Dashboard")
 
     if st.session_state.game_over:
-        book = st.session_state.book
-        final_pnl = book.compute_book_value(st.session_state.stock.last_price, st.session_state.stock.last_vol) - st.session_state.starting_cash
-        # why book value and not pnl? why - cash if cash not in book?
-        # +already computed outside function right after, we could compute it right before and pass it as argument to avoid useless recomputation
-        final_score = calculate_risk_score(book)
+        final_pnl = portfolio_pnl
+        final_score = score
 
         if final_pnl > 0:
             st.success(f"🎉 GAME OVER - YOU WIN! Final P&L: ${final_pnl:,.0f} | Score: {final_score:.0f}/100")

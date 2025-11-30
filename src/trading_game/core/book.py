@@ -77,7 +77,7 @@ class Book(BaseModel):
 
         return trade_id
 
-    def add_trade_stock(self, stock: Stock, quantity: int, spot_ref: float, vol_ref: float) -> str:
+    def add_trade_stock(self, stock: Stock, quantity: int, spot_ref: float) -> str:
         """Update the quantity of the underlying stock and keep a track record of the trade"""
 
         # Generate trade_id for the strategy trade according to time
@@ -142,8 +142,7 @@ class Book(BaseModel):
 
         return value
 
-    def stocks_pnl(self, spot_ref: float, volatility: float) -> float:
-        positions: Dict[str, Dict[str, float]] = {}
+    def stocks_pnl(self, spot_ref: float) -> float:
         total_stock_pnl = 0.0
 
         for trade_id, record in self.trade_history.items():

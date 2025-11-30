@@ -1,8 +1,11 @@
 import streamlit as st
+from trading_game.config.settings import STARTING_CASH
+
+
 
 def render_top_metrics(total_portfolio_value, pnl, risk_score, cash_available) -> None:
     col1, col2, col3, col4, col5 = st.columns(5)
-    pnl_pct = (pnl / st.session_state.starting_cash) * 100
+    pnl_pct = (pnl / STARTING_CASH) * 100
 
     with col1:
         st.metric(

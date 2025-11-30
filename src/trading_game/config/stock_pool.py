@@ -111,7 +111,6 @@ STOCK_POOL = [
     {"name": "PhoneZone Wireless", "ticker": "PHNZ US", "sector": "Telecom", "init_price": 41.85, "init_vol": 0.22},
     {"name": "CellConnect Inc.", "ticker": "CELL US", "sector": "Telecom", "init_price": 235.70, "init_vol": 0.28},
     {"name": "TeleKom AG", "ticker": "TLKM GY", "sector": "Telecom", "init_price": 24.85, "init_vol": 0.23},
-    {"name": "MobilePhone Group plc", "ticker": "MBPH LN", "sector": "Telecom", "init_price": 0.72, "init_vol": 0.28},
     {"name": "CitrusTel SA", "ticker": "CTRS FP", "sector": "Telecom", "init_price": 10.15, "init_vol": 0.25},
 
     # Entertainment/Media - Higher volatility (0.30-0.45)
