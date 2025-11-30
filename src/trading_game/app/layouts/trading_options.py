@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import streamlit as st
 
 from trading_game.core.manual_trading import VanillaOrder, StrategyOrder, OrderSide, OrderType, StrategyType
-from trading_game.config.settings import RF, BASE
+from trading_game.config.settings import RF, BASE, TRANSACTION_COST
 from trading_game.core.option_pricer import Option, Strategy
 
 
@@ -12,6 +12,8 @@ def render_trading_options() -> None:
     st.header(f"💼 Trading Options - {st.session_state.stock.ticker}")
     tab1, tab2 = st.tabs(["Vanilla Options", "Strategies"])
 
+    book= st.session_state.book
+    
     # ===== TAB 1: VANILLA OPTIONS =====
     with tab1:
         st.markdown("#### Buy/Sell Single Options")
@@ -65,18 +67,21 @@ def render_trading_options() -> None:
 
                 if success:
                     cost = vanilla_order.executed_price * qty * 100
-                    
-                    # Add trade to book
-                    book = st.session_state.book
-                    book.add_trade_strategy(
-                    vanilla_order_strategy,
-                    qty * 100,
-                    st.session_state.stock.last_price,
-                    st.session_state.stock.last_vol)
-                    st.session_state.book = book
+                    transaction_cost = abs(qty) * cost * TRANSACTION_COST
+                    if book.cash >= cost + transaction_cost:
+                        # Add trade to book
+                        book = st.session_state.book
+                        book.add_trade_strategy(
+                        vanilla_order_strategy,
+                        qty * 100,
+                        st.session_state.stock.last_price,
+                        st.session_state.stock.last_vol)
+                        book.cash -= transaction_cost
 
-                    st.success(f"✅ {side} order executed at ${vanilla_order.executed_price:.4f}")
-                    st.info(f"💰 Total cost: ${cost:.2f}")
+                        st.success(f"✅ {side} order executed at ${vanilla_order.executed_price:.4f}")
+                        st.info(f"💰 Total cost: ${cost:.2f}")
+                    else:
+                        st.error("Insufficient cash!")
                     st.rerun()
                 else:
                     st.error("❌ Order could not be executed (check limit price)")
@@ -245,18 +250,21 @@ def render_trading_options() -> None:
 
                 if success:
                     cost = strategy_order.net_premium * qty_strat * 100
-
-                    # Add trade to book
-                    book = st.session_state.book
-                    book.add_trade_strategy(
-                    strategy_order_strategy,
-                    qty_strat * 100,
-                    st.session_state.stock.last_price,
-                    st.session_state.stock.last_vol)
-                    st.session_state.book = book
-
-                    st.success(f"✅ {strat_type} executed at ${strategy_order.net_premium:.4f}")
-                    st.info(f"💰 Total cost: ${cost:.2f}")
+                    transaction_cost = abs(qty) * cost * TRANSACTION_COST
+                    if book.cash >= cost + transaction_cost:
+                        # Add trade to book
+                        book = st.session_state.book
+                        book.add_trade_strategy(
+                        strategy_order_strategy,
+                        qty_strat * 100,
+                        st.session_state.stock.last_price,
+                        st.session_state.stock.last_vol)
+                        book.cash -= transaction_cost
+                        
+                        st.success(f"✅ {strat_type} executed at ${strategy_order.net_premium:.4f}")
+                        st.info(f"💰 Total cost: ${cost:.2f}")
+                    else:
+                        st.error("Insufficient cash!")
                     st.rerun()
                 else:
                     st.error("❌ Strategy could not be executed (check limit price)")
