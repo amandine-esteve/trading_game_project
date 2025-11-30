@@ -18,6 +18,7 @@ def render_side_bar() -> None:
         <a href="#hedging" class="nav-link">🛡️ Delta Hedging</a>
         <a href="#clients" class="nav-link">📞 Client Requests</a>
         <a href="#manual-trading" class="nav-link">💼 Manual Trading</a>
+        <a href="#pricer" class="nav-link">🧮 Option Pricer</a>
         """, unsafe_allow_html=True)
 
         st.markdown("---")
@@ -27,7 +28,16 @@ def render_side_bar() -> None:
         st.caption(f"🏁 Game: {'OVER' if st.session_state.game_over else 'IN PROGRESS'}")
 
 def render_header() -> None:
-    st.title("🎯 Options Market Maker Dashboard")
+    
+    col1, col2 = st.columns([0.5, 5])
+
+    with col1:
+        st.image("images/logo_vf.jpeg", width=80)
+
+    with col2:
+        st.markdown("""
+        <h1 style='margin-top: -10px;'>Flow Master Dashboard</h1>
+        """, unsafe_allow_html=True)
 
     if st.session_state.game_over:
         final_pnl = calculate_total_portfolio_value() - st.session_state.starting_cash
