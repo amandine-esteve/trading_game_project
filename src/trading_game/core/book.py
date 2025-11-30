@@ -32,6 +32,10 @@ class Book(BaseModel):
         """Check if the book has no positions."""
         return len(self.trades) == 0 and len(self.stocks) == 0
     
+    def is_empty_stock(self) -> bool:
+        """ Check if the book has stocks"""
+        return len(self.stocks) == 0
+    
     def add_trade_strategy(self, strategy: Strategy, quantity: int, spot_ref:float, volatility: float) -> str:
         """Add a strategy trade (not individual legs) to the book"""
 
@@ -84,7 +88,7 @@ class Book(BaseModel):
         if quantity == 0:
             raise ValueError("Quantity must be non-zero.")
 
-        # Update the stock quantity held
+        # Update the stock quantity held - Only 1 stock
         self.stock_quantity += quantity
 
         # Define stock key (unique reference)
@@ -137,6 +141,29 @@ class Book(BaseModel):
         value+=self.cash
 
         return value
+
+    def stocks_pnl(self, spot_ref: float, volatility: float) -> float:
+        positions: Dict[str, Dict[str, float]] = {}
+        total_stock_pnl = 0.0
+
+        for trade_id, record in self.trade_history.items():
+            (
+                timestamp,      # 0
+                spot_trade,     # 1
+                quantity,       # 2
+                strikes,        # 3
+                maturities,     # 4
+                trade_price,    # 5
+                asset_type,     # 6 (str for a stock, Strategy for options)
+                ref_key         # 7 (stock_key ou strat_key)
+            ) = record
+
+            # we only keep stocks
+            if isinstance(asset_type, str):
+                total_stock_pnl+= (spot_ref - trade_price) * quantity
+
+        return total_stock_pnl
+
 
     def compute_book_pnl(self, spot_ref: float, volatility: float) -> float:
         """Compute total PnL of the book using trade history."""

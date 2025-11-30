@@ -11,15 +11,17 @@ def render_current_positions() -> None:
     st.header("📈 Current Positions")
 
     book = st.session_state.book
+    stock = st.session_state.stock
+
+    spot = st.session_state.stock.last_price
+    vol = st.session_state.stock.last_vol
 
     if not book.is_empty():
         book_for_dataframe = list()
 
         for strat_key, (strategy, quantity, entry_price) in book.trades.items():
             if isinstance(strategy, Strategy):
-                spot = st.session_state.stock.last_price
-                vol = st.session_state.stock.last_vol
-
+ 
                 #  Current price of the strategy
                 strat_value = strategy.price(spot, vol)
                 current_price = quantity * strat_value
@@ -56,18 +58,15 @@ def render_current_positions() -> None:
         st.info("No open positions")
 
     st.markdown("")
-    st.markdown("#### Stock Position") #should be handled via the book as well
+    st.markdown("#### Stock Position")
 
-    stock_col1, stock_col2, stock_col3 = st.columns(3)
+    stock_col1, stock_col2 = st.columns(2)
     with stock_col1:
-        st.metric("Position", f"{st.session_state.futures_position:+.0f} shares")
+        if not book.is_empty_stock():
+            st.metric("Position", f"{book.stocks[stock.ticker][1]:+.0f} shares")
+        else:
+            st.metric("Position", f"{0:+.0f} shares")
     with stock_col2:
-        if 'futures_entry_price' in st.session_state and st.session_state.futures_position != 0:
-            futures_pnl = (
-                                  st.session_state.stock.last_price - st.session_state.futures_entry_price) * st.session_state.futures_position
-            st.metric("Futures P&L", f"${futures_pnl:,.0f}")
-    with stock_col3:
-        if st.session_state.futures_position != 0:
-            st.metric("Entry Price", f"${st.session_state.get('futures_entry_price', 0):.2f}")
-
+        if not book.is_empty_stock():
+                st.metric("Futures P&L", f"${book.stocks_pnl(spot,vol):,.0f}")
     st.divider()
