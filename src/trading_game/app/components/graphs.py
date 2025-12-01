@@ -2,9 +2,8 @@ import streamlit as st
 
 import plotly.graph_objects as go
 
-def render_stock_chart(x_values) -> None:
+def render_stock_chart(x_values: list[int], y_values: list[float]) -> None:
     fig = go.Figure()
-    y_values = st.session_state.stock.price_history
 
     fig.add_trace(go.Scatter(
         x=x_values,
@@ -56,11 +55,13 @@ def render_stock_chart(x_values) -> None:
 
     st.plotly_chart(fig, use_container_width=True)
 
-def render_pnl_chart(x_values, pnl) -> None:
+def render_pnl_chart(x_values: list[int], y_values: list[float]) -> None:
+    pnl = y_values[len(y_values) - 1]
+
     fig_pnl = go.Figure()
     fig_pnl.add_trace(go.Scatter(
         x=x_values,
-        y=st.session_state.pnl_history,
+        y= y_values,
         mode='lines',
         name='P&L',
         line=dict(color='#00ff88' if pnl > 0 else '#ff4444', width=2.5),
