@@ -35,8 +35,10 @@ def render_trading_delta(portfolio_greeks, cash_available) -> None:
     with hedge_col3:
         st.write("")
         st.write("")
-        executed = True
+        tried_executing = False
+        executed = False
         if st.button("⚡ Execute Hedge", type="primary"):
+            tried_executing = True
             if cash_available >= transaction_cost:
 
                 # ADD TRADE TO BOOK
@@ -48,12 +50,11 @@ def render_trading_delta(portfolio_greeks, cash_available) -> None:
 
                 book.cash -= (stock_qty * stock.last_price + transaction_cost)
                 st.success(f"Hedge executed! New position: {book.stocks[stock.ticker][1]:+.0f}")
+                executed = True
 
-            else:
-                executed = False
     if executed:
         st.success(f"Hedge executed! New position: {book.stocks[stock.ticker][1]:+.0f}")
-    else:
+    elif tried_executing:
         st.error("Insufficient cash for transaction cost!")
 
     st.divider()

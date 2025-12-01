@@ -28,6 +28,7 @@ def process_trade(order_strategy, execution_price, qty, side) -> None:
 def render_trading_options() -> None:
     st.markdown('<a name="manual-trading"></a>', unsafe_allow_html=True)
     st.header(f"💼 Trading Options - {st.session_state.stock.ticker}")
+
     tab1, tab2 = st.tabs(["Vanilla Options", "Strategies"])
 
     # ===== TAB 1: VANILLA OPTIONS =====
