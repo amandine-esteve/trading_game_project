@@ -1,5 +1,6 @@
 import streamlit as st
 
+from trading_game.app.components.trading_tabs import render_trading_single_option_tab, render_trading_strategy_tab
 from trading_game.core.manual_trading import VanillaOrder, StrategyOrder, OrderSide, OrderType, StrategyType
 from trading_game.config.settings import RF, BASE, TRANSACTION_COST
 from trading_game.core.option_pricer import Option, Strategy
@@ -31,57 +32,23 @@ def render_trading_options() -> None:
 
     tab1, tab2 = st.tabs(["Vanilla Options", "Strategies"])
 
+    spot_ref = st.session_state.stock.last_price
+    vol_ref = st.session_state.stock.last_vol
+
     # ===== TAB 1: VANILLA OPTIONS =====
     with tab1:
-        st.markdown("#### Buy/Sell Single Options")
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            side = st.radio("Side", ["Buy", "Sell"], horizontal=True, key="vanilla_side")
-            option_type = st.selectbox("Type", ["call", "put"], key="vanilla_type")
-            strike = st.number_input(
-                "Strike",
-                value=float(st.session_state.stock.last_price),
-                step=5.0,
-                key="vanilla_strike"
-            )
-
-        with col2:
-            days = st.slider("Days to Expiry", 1, 365, 30, key="vanilla_dte")
-            qty = st.number_input(
-                "Quantity (lots)", 
-                min_value=1, 
-                value=1, 
-                key="vanilla_qty",
-                help="1 option batch = 100 options"
-            )
-
-            st.caption(f"📦 Total options: {qty * 100}")
-            
-            order_type_choice = st.radio(
-                "Order Type", ["Market", "Limit"], horizontal=True, key="vanilla_order_type"
-            )
-
-            if order_type_choice == "Limit":
-                limit_price = st.number_input(
-                    "Limit Price (per option)", 
-                    min_value=0.01, 
-                    value=1.0, 
-                    step=0.1, 
-                    key="vanilla_limit"
-                )
-            else:
-                limit_price = None
+        (
+            qty, side, order_type_choice, option_type, strike, days, limit_price
+        ) = render_trading_single_option_tab(spot_ref, vol_ref)
 
         if st.button("Execute Vanilla Trade", key="btn_vanilla"):
-            #quotity of option here is 100
+            # Quotity of option here is 100
             total_quantity = qty * 100
-            
+
             vanilla_order = VanillaOrder(
                 side=OrderSide.BUY if side == "Buy" else OrderSide.SELL,
                 order_type=OrderType.MARKET if order_type_choice == "Market" else OrderType.LIMIT,
-                quantity=total_quantity,  
+                quantity=total_quantity,
                 option_type=option_type,
                 strike=strike,
                 maturity=days / BASE,
@@ -106,137 +73,18 @@ def render_trading_options() -> None:
                 st.error(f"❌ Order rejected: {vanilla_order.rejection_reason}")
 
     # ===== TAB 2: STRATEGIES =====
-    with tab2:
-        st.markdown("#### Execute Option Strategy Trade")
-
-        strat_type = st.selectbox(
-            "Strategy Type",
-            [
-                "Call Spread",
-                "Put Spread",
-                "Straddle",
-                "Strangle",
-                "Call Calendar Spread",
-                "Put Calendar Spread",
-                "Bull Risk Reversal",
-                "Bear Risk Reversal",
-                "Call Butterfly",
-                "Put Butterfly"
-            ],
-            key="strat_type"
-        )
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            side_strat = st.radio("Side", ["Buy", "Sell"], horizontal=True, key="strat_side")
-
-            # ===== 2 STRIKES =====
-            if strat_type in [
-                "Call Spread",
-                "Put Spread",
-                "Strangle",
-                "Bull Risk Reversal",
-                "Bear Risk Reversal"
-            ]:
-                strike1 = st.number_input(
-                    "Strike 1",
-                    value=float(st.session_state.stock.last_price * 0.95),
-                    min_value=0.0001,
-                    step=5.0,
-                    key="strat_k1"
-                )
-                strike2 = st.number_input(
-                    "Strike 2",
-                    value=float(st.session_state.stock.last_price * 1.05),
-                    min_value=0.0001,
-                    step=5.0,
-                    key="strat_k2"
-                )
-                strikes = [strike1, strike2]
-
-            # ===== 3 STRIKES (BUTTERFLIES) =====
-            elif strat_type in ["Call Butterfly", "Put Butterfly"]:
-                strike1 = st.number_input(
-                    "Strike 1 (Low)",
-                    value=float(st.session_state.stock.last_price * 0.90),
-                    min_value=0.0001,
-                    step=5.0,
-                    key="strat_k1_fly"
-                )
-                strike2 = st.number_input(
-                    "Strike 2 (Mid)",
-                    value=float(st.session_state.stock.last_price),
-                    min_value=0.0001,
-                    step=5.0,
-                    key="strat_k2_fly"
-                )
-                strike3 = st.number_input(
-                    "Strike 3 (High)",
-                    value=float(st.session_state.stock.last_price * 1.10),
-                    min_value=0.0001,
-                    step=5.0,
-                    key="strat_k3_fly"
-                )
-                strikes = [strike1, strike2, strike3]
-
-            # ===== 1 STRIKE (STRADDLE + CALENDARS) =====
-            else:  # Straddle, Call Calendar Spread, Put Calendar Spread
-                label = "Strike (ATM)" if strat_type == "Straddle" else "Strike"
-                strike_atm = st.number_input(
-                    label,
-                    value=float(st.session_state.stock.last_price),
-                    min_value=0.0001,
-                    step=5.0,
-                    key="strat_k"
-                )
-                strikes = [strike_atm]
-
-        with col2:
-            # ---- Maturities ----
-            if strat_type in ["Call Calendar Spread", "Put Calendar Spread"]:
-                short_days_strat = st.slider(
-                    "Short Leg - Days to Expiry",
-                    1, 365, 30,
-                    key="strat_dte_short"
-                )
-                long_days_strat = st.slider(
-                    "Long Leg - Days to Expiry",
-                    2, 730, 180,
-                    key="strat_dte_long"
-                )
-                days_strat = long_days_strat
-            else:
-                days_strat = st.slider(
-                    "Days to Expiry",
-                    1, 365, 30,
-                    key="strat_dte"
-                )
-
-            qty_strat = st.number_input(
-                "Quantity (lots)", 
-                min_value=1, 
-                value=1, 
-                key="strat_qty",
-                help="1 option batch = 100 options"
-            )
-
-            st.caption(f"📦 Total options: {qty_strat * 100}")
-            
-            order_type_strat = st.radio(
-                "Order Type", ["Market", "Limit"], horizontal=True, key="strat_order_type"
-            )
-
-            if order_type_strat == "Limit":
-                limit_price_strat = st.number_input(
-                    "Limit Price (per option)", 
-                    min_value=0.01, 
-                    value=1.0, 
-                    step=0.1, 
-                    key="strat_limit"
-                )
-            else:
-                limit_price_strat = None
+    with (tab2):
+        (
+            qty_strat,
+            side_strat,
+            order_type_strat,
+            strat_type,
+            strikes,
+            days_strat,
+            short_days_strat,
+            long_days_strat,
+            limit_price_strat
+        ) = render_trading_strategy_tab(spot_ref, vol_ref)
 
         if st.button("Execute Strategy", key="btn_strategy"):
             strat_type_map = {

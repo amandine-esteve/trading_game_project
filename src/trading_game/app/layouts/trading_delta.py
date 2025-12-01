@@ -22,8 +22,6 @@ def render_trading_delta(portfolio_greeks, cash_available) -> None:
     with hedge_col2:
         stock_qty = st.number_input(
             "Stock Quantity",
-            min_value=-10000,
-            max_value=10000,
             value=int(recommended_hedge),
             step=100,
             help="Positive = Long, Negative = Short"

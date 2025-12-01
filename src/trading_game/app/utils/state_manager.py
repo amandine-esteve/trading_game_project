@@ -122,9 +122,11 @@ def add_market_response(quote_id: str, final_answer:str) -> None:
     # Process result if exists (add trade to book)
     if st.session_state.result:
         book = st.session_state.book
+        qty = st.session_state.quote_request.quantity
+        way = 1 if st.session_state.quote_request.way == "sell" else -1
         book.add_trade_strategy(
             st.session_state.quote_request.strat,
-            st.session_state.quote_request.quantity,
+            qty * way,
             st.session_state.stock.last_price,
             st.session_state.stock.last_vol)  # check if right spot ref
         st.session_state.book = book
