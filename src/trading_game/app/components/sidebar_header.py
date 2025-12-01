@@ -55,11 +55,16 @@ def render_header(portfolio_pnl: float, score: float) -> None:
         ((st.session_state.game_duration - st.session_state.tick_count) * REFRESH_INTERVAL / 1000) // 60
     )
 
-    col_progress1, col_progress2 = st.columns([4, 1])
+    col_progress1, col_progress2, col_progress3 = st.columns([8, 1, 1])
     with col_progress1:
         st.progress(progress_pct,
                     text=f"Game Progress: {st.session_state.tick_count}/{st.session_state.game_duration} ticks")
     with col_progress2:
         st.metric("Time Left", f"{time_remaining} min" if time_remaining > 0 else "Last Minute")
+
+    with col_progress3:
+        refresh = st.button("Refresh")
+        if refresh:
+            st.rerun()
 
     st.divider()
