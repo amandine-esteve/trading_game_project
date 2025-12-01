@@ -19,6 +19,7 @@ class Book(BaseModel):
     stock_quantity: int = Field(default=0, description="Number of stock shares held")
     trade_history: Dict[str, Tuple[str, float, int,float, int, float, str, str]] = Field(default_factory=dict, description="Trade history: {trade_id: (time, spot_ref, quantity, price, asset_type, ref_key)}")
     cash: float = Field(default=STARTING_CASH, description="Cash available")
+    pnl_history: list[float] = Field(default=[0.0], description="History of PNL values")
 
     @staticmethod
     def make_strat_key(strategy: Strategy) -> str:
@@ -35,6 +36,11 @@ class Book(BaseModel):
     def is_empty_stock(self) -> bool:
         """ Check if the book has stocks"""
         return len(self.stocks) == 0
+
+    def add_pnl_point(self, spot_ref: float, vol_ref: float) -> None:
+        """Add PNL computation to PNL history"""
+        pnl = self.compute_book_pnl(spot_ref, vol_ref)
+        self.pnl_history.append(pnl)
     
     def add_trade_strategy(self, strategy: Strategy, quantity: int, spot_ref:float, volatility: float) -> str:
         """Add a strategy trade (not individual legs) to the book"""

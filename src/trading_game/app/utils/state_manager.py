@@ -22,8 +22,6 @@ def initial_settings() -> None:
     st.session_state.street = Street.street()
     st.session_state.book = Book()
     st.session_state.order_executor = OrderExecutor(max_position_size=MAX_OPTION_POSITION)
-    st.session_state.pnl_history = [
-        0]  # should this be part of book? an attribute pnl history which gets updated in compute_book_pnl method
 
     # Market shock
     st.session_state.shock = MarketShock.shock(name=stock.name, sector=stock.sector)
@@ -76,7 +74,6 @@ def update_state_on_autorefresh() -> None:
         else:
             stock = st.session_state.stock
             book = st.session_state.book
-            pnl_history = st.session_state.pnl_history
 
             # Update shock
             shock_dict = manage_shock(tick_count, stock)
@@ -85,15 +82,14 @@ def update_state_on_autorefresh() -> None:
             stock.move_stock(shock_dict, st.session_state.shocked_vol)
 
             # Update PNL history
-            total_pnl = book.compute_book_pnl(stock.last_price, stock.last_vol)
-            pnl_history.append(total_pnl)
+            book.add_pnl_point(stock.last_price, stock.last_vol)
 
             # Update tick count
             tick_count += 1
 
             st.session_state.tick_count = tick_count
             st.session_state.stock = stock
-            st.session_state.pnl_history = pnl_history
+            st.session_state.book = book
 
 def add_quote_request(message: str, quote_id: str) -> None:
     """Add a new quote request to the chat"""

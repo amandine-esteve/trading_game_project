@@ -13,24 +13,28 @@ def render_market_overview(pnl, portfolio_greeks) -> None :
 
     render_news()
 
+    stock = st.session_state.stock
+    book = st.session_state.book
+
     chart_col, risk_col = st.columns([2, 1])
     with chart_col:
-        x_values = list(range(len(st.session_state.stock.price_history)))
+        x_values = list(range(len(stock.price_history)))
+        y_values_stock = stock.price_history
+        y_values_pnl = book.pnl_history
 
+        # === Stock Evolution ===
         st.subheader(f"📈 Live Price - {st.session_state.stock.name} {st.session_state.stock.ticker}")
-        render_stock_chart(x_values)
+        render_stock_chart(x_values, y_values_stock)
 
         # === P&L Evolution ===
         st.subheader("💰 P&L Evolution")
-        render_pnl_chart(x_values, pnl)
+        render_pnl_chart(x_values, y_values_pnl)
 
     with risk_col:
         st.markdown('<a id="risk-dashboard"></a>', unsafe_allow_html=True)
         st.subheader("⚠️ Risk Dashboard")
 
         st.markdown("#### Portfolio Greeks")
-
-        book = st.session_state.book
 
         delta_color = get_risk_color(portfolio_greeks['delta'], [500, 1500])
         gamma_color = get_risk_color(portfolio_greeks['gamma'], [50, 150])
