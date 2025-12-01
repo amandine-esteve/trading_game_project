@@ -80,7 +80,7 @@ class QuoteRequest(BaseModel):
     def generate_response_message(self, accept: bool) -> str:
         if accept:
             return f"<strong> {self.investor.company} [{self.investor.name}]: </strong> {get_random_response_phrase(self.way)}"
-        return get_random_response_phrase('pass')
+        return f"<strong> {self.investor.company} [{self.investor.name}]: </strong> {get_random_response_phrase('pass')}"
 
 
 

@@ -58,6 +58,5 @@ def render_input_chat() -> None:
                     # Add market response to chat
                     add_market_response(st.session_state.pending_quote, final_answer)
 
-                    st.rerun()
     else:
         st.info("No pending quote requests. Keep trading!")
