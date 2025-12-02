@@ -1,4 +1,5 @@
 import streamlit as st
+from pathlib import Path
 
 from trading_game.app.components.news_alert import render_news
 #from trading_game.app.utils.functions import calculate_risk_score
@@ -32,7 +33,9 @@ def render_header(portfolio_pnl: float, score: float) -> None:
     col1, col2 = st.columns([0.5, 5])
 
     with col1:
-        st.image("images/logo_vf.jpeg", width=80)
+        # Use absolute path to avoid issues with working directory
+        logo_path = Path(__file__).parent.parent / "images" / "logo_vf.jpeg"
+        st.image(str(logo_path), width=80)
 
     with col2:
         st.markdown("""
