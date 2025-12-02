@@ -12,6 +12,8 @@ from datetime import datetime, timedelta
 from typing import List, Tuple
 import calendar
 
+from trading_game.config.settings import BASE
+
 
 def get_third_friday(year: int, month: int) -> datetime:
     """
@@ -188,6 +190,10 @@ def get_maturity_options(
                     options.append((label, business_days))
     
     return options
+
+def get_year_frac_maturity_options() -> List[float]:
+    maturities = get_maturity_options()
+    return  [days/BASE for mat_str, days in maturities]
 
 
 

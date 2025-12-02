@@ -3,6 +3,7 @@ import random
 import numpy as np
 from typing import Literal
 
+from trading_game.config.maturity_config import get_year_frac_maturity_options
 from trading_game.config.settings import RF
 
 STRATEGY_POOL = {
@@ -23,7 +24,7 @@ STRATEGY_POOL = {
 }
 
 RELATIVE_STRIKE_POOL = np.linspace(0.0, 0.25, 6)
-MATURITY_POOL = [1/12, 1/6, 1/4, 1/2, 3/4, 1, 2, 3, 4, 5]
+MATURITY_POOL = get_year_frac_maturity_options()
 
 def get_random_strat(level: Literal['easy','hard']) -> dict:
     return random.choice(STRATEGY_POOL[level])

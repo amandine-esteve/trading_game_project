@@ -5,6 +5,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel, model_validator
 
 from trading_game.config.request_pool import get_random_quote_phrase, get_random_response_phrase
+from trading_game.config.settings import BASE
 from trading_game.core.option_pricer import Strategy
 from trading_game.models.street import Investor
 
@@ -43,7 +44,7 @@ class QuoteRequest(BaseModel):
         Convert maturity in years to formatted string like 'Jan25', 'Mar26', etc.
         """
         today = date.today()
-        days = int(maturity * 365.25)  # Account for leap years
+        days = int(maturity * BASE)  # Account for leap years
         future_date = today + timedelta(days=days)
         return future_date.strftime("%b%y")
 
