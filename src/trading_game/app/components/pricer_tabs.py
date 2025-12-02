@@ -28,14 +28,14 @@ def render_single_option_pricing_tab(spot_ref: float, vol_ref: float) -> None:
 
     st.subheader("Price a Single Option")
 
-    # ---------- OPTION TYPE ----------
-    pricer_opt_type = render_option_type_choice(key)
-
     # ---------- INPUTS ON THE LEFT / RESULTS ON THE RIGHT ----------
     input_col, result_col = st.columns([2, 1])
 
     # ----- PARAMETERS -----
     with input_col:
+        # ---------- OPTION TYPE ----------
+        pricer_opt_type = render_option_type_choice(key)
+
         pricer_vol = render_market_param_inputs(vol_ref)
 
         st.markdown(
@@ -68,13 +68,13 @@ def render_vanilla_strategy_pricing_tab(spot_ref: float, vol_ref: float) -> None
     key = "pricer"
     st.subheader("Price an Options Strategy")
 
-    strat_type_label = render_strat_type_choice(key)
-
     # ---------- INPUTS ON THE LEFT / RESULTS ON THE RIGHT ----------
     input_col, result_col = st.columns([2, 1])
 
     # ===== MARKET + Maturity + STRIKES =====
     with input_col:
+        strat_type_label = render_strat_type_choice(key)
+        
         pricer_vol = render_market_param_inputs(vol_ref, strat=True)
 
         strat_data = {"r": RF}

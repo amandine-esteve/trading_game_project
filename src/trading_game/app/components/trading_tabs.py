@@ -2,34 +2,37 @@ import streamlit as st
 
 from trading_game.app.components.option_param_inputs import (
     render_option_type_choice, render_strat_type_choice, render_strike_input, render_double_strike_input,
-    render_triple_strike_input
+    render_triple_strike_input, render_maturity_selector
 )
-
+from trading_game.config.maturity_config import get_maturity_options, get_short_maturity_options, get_long_maturity_options
+from trading_game.config.settings import BASE
 
 
 def render_trading_single_option_tab(spot_ref: float, vol_ref: float):
-    key = "trading"
-    st.subheader("Buy/Sell Single Options")
+    key = "vanilla"
+    days = 0
+
+    st.subheader("Execute Vanilla Option Trade")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        # ---------- SIDE ----------
-        st.markdown(
-            "<span style='color:white; font-weight:bold;'>Side</span>",
-            unsafe_allow_html=True
-        )
-        side = st.radio("Side", ["Buy", "Sell"], horizontal=True, key="option_side", label_visibility="collapsed")
+        # Side
+        side = st.radio("Side", ["Buy", "Sell"], horizontal=True, key="vanilla_side")
 
-        # ---------- OPTION TYPE ----------
+        # Option Type
         option_type = render_option_type_choice(key)
 
-        # ---------- OPTION STRIKE ----------
+        # Strike
         strike = render_strike_input(spot_ref, key)
 
     with col2:
         # Maturity
-        days = st.slider("Time to maturity (days)", 1, 365, 30, key="vanilla_dte")
+        _, days = render_maturity_selector(
+            "Time to maturity",
+            "vanilla_dte",
+            default_val="1M"
+        )
 
         qty = st.number_input(
             "Quantity (lots)",
@@ -64,8 +67,6 @@ def render_trading_strategy_tab(spot_ref: float, vol_ref: float):
 
     st.subheader("Execute Option Strategy Trade")
 
-    strat_type = render_strat_type_choice(key)
-
     col1, col2 = st.columns(2)
 
     with col1:
@@ -76,6 +77,8 @@ def render_trading_strategy_tab(spot_ref: float, vol_ref: float):
         )
         side_strat = st.radio("Side", ["Buy", "Sell"], horizontal=True, key="strat_side", label_visibility="collapsed")
 
+        strat_type = render_strat_type_choice(key)
+        
         # ===== 2 STRIKES =====
         if strat_type in [
             "Call Spread",
@@ -100,33 +103,42 @@ def render_trading_strategy_tab(spot_ref: float, vol_ref: float):
     with col2:
         # ---- Maturities ----
         if strat_type in ["Call Calendar Spread", "Put Calendar Spread"]:
-            short_days_strat = st.slider(
-                "Short Leg - Time to maturity (days)",
-                1, 365, 30,
-                key="strat_dte_short"
+            # Short leg options
+            _, short_days_strat = render_maturity_selector(
+                "Short Leg - Time to maturity",
+                "strat_dte_short",
+                options_func=get_short_maturity_options,
+                default_val="1M"
             )
-            long_days_strat = st.slider(
-                "Long Leg - Time to maturity (days)",
-                2, 730, 180,
-                key="strat_dte_long"
+            
+            # Long leg options
+            _, long_days_strat = render_maturity_selector(
+                "Long Leg - Time to maturity",
+                "strat_dte_long",
+                options_func=get_long_maturity_options,
+                default_val="6M"
             )
-            days_strat = long_days_strat
+            
+            # Validate
+            if long_days_strat <= short_days_strat:
+                st.warning("⚠️ Long leg maturity must be greater than short leg")
+
         else:
-            days_strat = st.slider(
-                "Time to maturity (days)",
-                1, 365, 30,
-                key="strat_dte"
+            # Standard strategies (same maturity for all legs)
+            _, days_strat = render_maturity_selector(
+                "Time to maturity",
+                "strat_dte",
+                default_val="1M"
             )
 
+        # Quantity
         qty_strat = st.number_input(
             "Quantity (lots)",
             min_value=1,
             value=1,
-            key="strat_qty",
-            help="1 option batch = 100 options"
+            key="strat_qty"
         )
-
-        st.caption(f"📦 Total options: {qty_strat * 100}")
+        st.caption(f"📦 Total strategies: {qty_strat * 100}")
 
         order_type_strat = st.radio(
             "Order Type", ["Market", "Limit"], horizontal=True, key="strat_order_type"
