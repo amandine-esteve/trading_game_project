@@ -1,242 +1,432 @@
 import streamlit as st
-
+from pathlib import Path
+import pandas as pd
 
 def show_rules_page():
-    """Display the rules and tutorial page"""
-    
-    # Header
-    st.markdown('<p class="big-title">🎯 FLOW MASTER</p>', unsafe_allow_html=True)
-    st.markdown('<p class="subtitle">Master the Art of Market Making</p>', unsafe_allow_html=True)
-    
-    # Introduction
-    st.markdown("---")
-    col1, col2, col3 = st.columns([1, 2, 1])
+    """Display the rules and tutorial page for the options market making game"""
+   
+    col1, col2 = st.columns([0.5, 5])
+
+    with col1:
+        # Use absolute path to avoid issues with working directory
+        logo_path = Path(__file__).parent.parent / "images" / "logo_vf.jpeg"
+        st.image(str(logo_path), width=80)
+
     with col2:
         st.markdown("""
-        ### 👋 Welcome to Flow Master!
-        
-        You are about to enter the fast-paced world of **market making**. Your goal is to profit from the 
-        **bid-ask spread** while managing your inventory risk and adapting to market conditions.
-        
-        Are you ready to compete against sophisticated trading algorithms?
-        """)
-    
+        <h1 style='margin-top: -10px;'>Flow Master Dashboard</h1>
+        """, unsafe_allow_html=True)
+
+    # Introduction
+    st.markdown("---")
+    st.markdown("""
+    ### 👋 Welcome to Flow Master!
+
+    You are an **options market maker** at a trading desk. Your role is to provide liquidity to the market 
+    by quoting **bid-ask prices** on vanilla options and strategies to a diverse panel of clients: sucha as hedge funds, 
+    asset managers, investment banks...
+
+    Your mission: **maximize your P&L** while managing your **Greeks exposure** and staying within risk limits.
+
+    Are you ready to compete in the options trading arena?
+    """)
+    st.markdown("---")
+
     # Game Objective
     st.markdown('<p class="section-header">🎯 Game Objective</p>', unsafe_allow_html=True)
     
     st.markdown("""
-    Your objective is to **maximize your Profit & Loss (PnL)** by:
-    - Quoting competitive **bid** and **ask** prices
-    - Earning the **spread** on each completed trade
-    - Managing your **inventory** to avoid excessive risk
-    - Adapting to changing **market volatility**
+    Your objective is to **maximize your Profit & Loss (P&L)** by:
+    - **Quoting competitive prices** to client requests (calls, puts, strategies)
+    - **Capturing the bid-ask spread** on every trade
+    - **Managing your Greeks** (Delta, Gamma, Vega, Theta) to control risk
+    - **Hedging your Delta** using the underlying stock
+    - **Estimating volatility correctly** to avoid being arbitraged
     """)
     
-    st.markdown('<div class="success-box"><b>Win Condition:</b> Achieve the highest PnL at the end of the trading session while maintaining acceptable risk levels.</div>', unsafe_allow_html=True)
-    
-    # How to Play
-    st.markdown('<p class="section-header">🎮 How to Play</p>', unsafe_allow_html=True)
+    st.markdown('<div class="success-box"><b>🏆 Win Condition:</b> Achieve the highest P&L at game end while keeping your risk score under control.</div>', unsafe_allow_html=True)
+    st.markdown("---")
+
+    # How to Play - Step by Step
+    st.markdown('<p class="section-header">🎮 How to Play: Step-by-Step</p>', unsafe_allow_html=True)
+
+    # Steps 1 & 2
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("""
+        ### 📞 Step 1: Receive Client Quote Requests
+        
+        Client requests appear in the **"Client Requests"** panel. Each request includes:
+        - **Client name** (Hedge Fund, Asset Manager, Investment Bank)
+        - **Option type** (Call or Put) or **Strategy** (Straddle, Strangle, etc.)
+        - **Strike price** (K)
+        - **Maturity** (1M, 3M, 6M, etc.)
+        - **Quantity** (The notional amount)
+        
+        Your job is to **quote a bid and ask price** to this client.
+        """)
+
+    with col2:
+        st.markdown("""
+        ### 🧮 Step 2: Price the Option Using the Pricer
+        
+        Use the **"Options Pricer Tool"** to calculate the fair value:
+        
+        1. **Select the option type** (Call/Put or Strategy)
+        2. **Match the maturity** from the client request (1M, 3M, ...) and the **strike** provided.
+        3. **🔑 Choose the volatility (σ)** — this is YOUR EDGE:
+        - Too high → you'll overprice and lose business
+        - Too low → you'll underprice and get arbitraged
+        4. **Press Enter** to compute the price and Greeks
+        The pricer will display:
+        - The **Option (or strategy) fair value** and the corresponding **Greeks**: Delta, Gamma, ...
+        """)
+
+    st.markdown('<div class="warning-box"><b>⚠️ Critical:</b> Volatility is the ONLY parameter you choose to get the option\'s price. Estimating it correctly is the key to profitability!</div>', unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # Steps 3 & 4
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("""
+        ### 💰 Step 3: Quote Your Bid-Ask Spread
+        
+        Now enter your **bid and ask prices** in the **"Trading Options"** panel:
+        
+        - **Bid price** (what you'll pay to BUY from the client)
+        - **Ask price** (what you'll charge to SELL to the client)
+        
+        **Strategy considerations:**
+        - **Aggressive quoting**: Tight spread → more trades, less profit per trade
+        - **Conservative quoting**: Wide spread → fewer trades, more profit per trade
+        - You can adjust it based on your risk appetite, current portfolio exposure, market volatility...
+        """)
+
+    with col2:
+        st.markdown("""
+        ### 🤝 Step 4: Client Decision
+        
+        The client will respond with one of three actions:
+        - **✅ BUY** (hits your ask) → You SELL the option
+        - **✅ SELL** (hits your bid) → You BUY the option
+        - **❌ PASS** → No trade executed
+        
+        If a trade is executed:
+        - The position is added to your **book**
+        - Your **P&L** updates based on the spread captured
+        - Your **Greeks** (Delta, Gamma, Vega, Theta) update
+        - Your **cash** and **portfolio value** adjust and your **risk score** recalculates
+        """)
+
+    st.markdown("---")
+
+    # Steps 5 & 6
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("""
+        ### 🛡️ Step 5: Manage Your Risk
+
+        Monitor your exposure in the **"Risk Dashboard"**:
+        """)
+
+        greeks_df = pd.DataFrame({
+            "Greek": ["**Delta**", "**Gamma**", "**Vega**", "**Theta**"],
+            "What It Measures": [
+                "Directional risk (price sensitivity)",
+                "Delta change rate",
+                "Volatility risk",
+                "Time decay"
+            ],
+            "How to Hedge": [
+                "Trade stocks or opposite options",
+                "Trade options to offset",
+                "Trade options with opposite Vega",
+                "Manage expiration dates"
+            ]
+        })
+
+        st.table(greeks_df)
+
+        st.markdown("""
+        **🎯 Delta Hedging Tool** (Located in **"Trading Shares"** panel):
+        - Shows **recommended hedge** in shares to neutralize Delta
+        - Stocks are Delta-1 instruments (perfect for hedging directional risk)
+        - Execute stock trades to rebalance your Delta to ~0
+        """)
+
+    with col2:
+        st.markdown("""
+        ### 📈 Step 6: Manual Trading (Optional)
+        
+        Access the **"Manual Trading"** tab to:
+        - Execute trade vanilla options (Calls/Puts) or option strategies (Straddles, Strangles, ...)
+        - Rebalance your Greeks proactively
+        - Take directional or volatility views
+        
+        **Use cases:**
+        - Your Gamma is too high → sell some options
+        - Your Vega is too negative → buy some options
+        - You want to flatten your book before game end
+        
+        Note that all your trades must respect your **cash position** constraints.
+        """)
+
+    st.markdown('<div class="info-box"><b>💡 Pro Tip:</b> Keep your Delta near zero to avoid directional risk. Use the recommended hedge feature!</div>', unsafe_allow_html=True)
+   
+    st.markdown("---")
+
+    # Game Interface Guide
+    st.markdown('<p class="section-header">🖥️ Understanding Your Dashboard</p>', unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     
     with col1:
         st.markdown("""
-        #### 1️⃣ Quote Your Prices
-        - Set your **BID price** (price at which you buy)
-        - Set your **ASK price** (price at which you sell)
-        - Your spread = Ask - Bid
+        ### 📊 Top Metrics (Always Visible)
         
-        #### 2️⃣ Trade Execution
-        - Market orders arrive randomly
-        - **Buy orders** hit your ask (you sell)
-        - **Sell orders** hit your bid (you buy)
-        - You earn profit from the spread
+        **Key Performance Indicators:**
+        - **Stock Price**: Current underlying price
+        - **P&L**: Your total profit/loss
+        - **Portfolio Value**: Cash + positions value
+        - **Cash**: Available buying power
+        - **Risk Score**: 0-100 (🟢 Low, 🟡 Medium, 🔴 High)
+        
+        **Live Charts:**
+        - **📈 Price Chart**: Real-time stock movement
+        - **💰 P&L Evolution**: Your profit over time
         """)
     
     with col2:
         st.markdown("""
-        #### 3️⃣ Manage Inventory
-        - Monitor your position size
-        - Positive inventory = you're long (own assets)
-        - Negative inventory = you're short (owe assets)
-        - Adjust quotes to rebalance
+        ### 🛠️ Trading Tools
         
-        #### 4️⃣ Adapt Strategy
-        - Watch market volatility
-        - Widen spread in uncertain markets
-        - Tighten spread to capture volume
-        - React to order flow
+        **Options Pricer:**
+        - Price any option or strategy
+        - View Greeks before quoting
+        
+        **Trading Shares:**
+        - Delta hedge calculator
+        - Recommended position size
+        
+        **Current Positions:**
+        - Live book display
         """)
     
-    # Market Mechanics
-    st.markdown('<p class="section-header">⚙️ Market Mechanics</p>', unsafe_allow_html=True)
+    st.markdown("---")
+
+    # Strategy Tips
+    st.markdown('<p class="section-header">💡 Tips for the first games\'s strategies</p>', unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown("""
+        **Start Conservative:**
+        1. Quote close to fair value (pricer price)
+        2. Use moderate spreads (10-15% of option value)
+        3. Delta hedge after every trade
+        4. Monitor risk score constantly
+        """)
+
+    with col2:
+        st.markdown("""
+        **Basic Workflow:**
+        1. ✅ Client request arrives
+        2. ✅ Price in Pricer and quote the bid/ask 
+        3. ✅ If trade executes → Delta hedge 
+        4. ✅ Monitor Greeks dashboard
+        """)
+
+    with col3:
+        st.markdown("""
+        **Golden Rules:**
+        - 🛡️ Keep Delta near zero
+        - 📊 Don't let Gamma explode
+        """)
     
-    st.markdown("""
-    ### Price Discovery
-    The market has a **true mid price** that follows a random walk:
-    - Base price evolves based on market volatility
-    - Your quotes compete with other market makers
-    - Best bid and ask determine the market spread
+    st.markdown('<div class="warning-box"><b>⚠️ Common Mistakes to Avoid:</b><br>• Ignoring Delta → huge directional losses<br>• Mispricing volatility → arbitraged by clients<br></div>', unsafe_allow_html=True)
     
-    ### Order Flow
-    """)
+    st.markdown("---")
+    # Key Concepts
+    st.markdown('<p class="section-header">📚 Key Concepts Explained</p>', unsafe_allow_html=True)
+    
+    with st.expander("💵 Bid-Ask Spread & Market Making", expanded=False):
+        st.markdown("""
+        **How you make money as a market maker:**
+        
+        You buy low (bid) and sell high (ask), capturing the spread:
+        
+        **Example:**
+        - Client wants to buy a Call option
+        - Fair value (from pricer): $5.00
+        - You quote: Bid = $4.80, Ask = $5.20 (spread = $0.40)
+        - Client buys at your ask ($5.20)
+        - You capture $0.20 premium over fair value
+        - Later, you hedge or offset the position
+        
+        **💰 Profit = Spread captured + Hedging P&L**
+        
+        ⚠️ **Trade-offs:**
+        - Wide spread → More profit per trade but fewer trades (clients pass)
+        - Tight spread → More trades but lower profit margins
+        """)
+    
+    with st.expander("📊 The Greeks: Your Risk Metrics", expanded=False):
+        st.markdown("""
+        **Delta (Δ):** Directional risk
+        - Measures option price change per $1 stock move
+        - Call Delta: 0 to 1 | Put Delta: -1 to 0
+        - **Portfolio Delta**: Sum of all positions' Deltas
+        - **Hedge with**: Stocks (Delta = 1) or opposite options
+        
+        **Gamma (Γ):** Delta sensitivity
+        - Measures how fast Delta changes
+        - High Gamma → Delta changes rapidly → harder to hedge
+        - Long options → Positive Gamma
+        - Short options → Negative Gamma
+        
+        **Vega (ν):** Volatility risk
+        - Measures P&L change per 1% volatility move
+        - Long options → Positive Vega (profit if vol rises)
+        - Short options → Negative Vega (profit if vol falls)
+        - **Critical**: Mispricing vol causes biggest losses!
+        
+        **Theta (Θ):** Time decay
+        - Daily P&L from time passing
+        - Long options → Negative Theta (lose value daily)
+        - Short options → Positive Theta (gain value daily)
+        - Accelerates near expiration
+        """)
+    
+    with st.expander("🎯 Delta Hedging Strategy", expanded=False):
+        st.markdown("""
+        **Why hedge Delta?**
+        - Delta measures directional exposure
+        - Unhedged Delta = betting on stock direction
+        - Market makers aim to be **Delta neutral** (no directional bet)
+        
+        **How to hedge:**
+        
+        1. **Check your Portfolio Delta** (in Risk Dashboard)
+        2. **Use the recommended hedge** (in Trading Shares panel)
+        3. **Execute the stock trade**:
+           - Portfolio Delta +100 → Sell 100 shares
+           - Portfolio Delta -50 → Buy 50 shares
+           - Portfolio Delta ~0 → No hedge needed
+        
+        **Example:**
+        - You sold 1 Call (Delta = 0.60 per contract)
+        - 100 contracts sold → Portfolio Delta = -60
+        - Recommended hedge: **Buy 60 shares**
+        - After hedge: Portfolio Delta ≈ 0 ✅
+        
+        **⚠️ Note:** Delta changes (Gamma), so rehedge regularly!
+        """)
+    
+    with st.expander("🔮 Volatility: Your Secret Weapon", expanded=False):
+        st.markdown("""
+        **Why volatility matters:**
+        - Options are primarily **volatility instruments**
+        - Higher vol → Higher option prices
+        - Lower vol → Lower option prices
+        
+        **Your edge as a market maker:**
+        - Clients give you Strike + Maturity
+        - **YOU choose the volatility** to price with
+        - If you estimate vol better than clients → profit
+        - If you misestimate → losses
+        
+        **Volatility strategies:**
+        
+        **Market is calm:**
+        - Quote with lower vol
+        - Sell options (collect premium)
+        - Positive Theta (time decay profits)
+        
+        **Market is volatile:**
+        - Quote with higher vol
+        - Widen spreads (more risk = more compensation)
+        - Watch for vol spikes
+        
+        **⚠️ Danger:**
+        - Quote vol too low → clients arbitrage you
+        - Quote vol too high → no trades (clients pass)
+        - **Balance is key!**
+        """)
+    
+    with st.expander("📦 Position Management", expanded=False):
+        st.markdown("""
+        **Your book tracks:**
+        - All open positions (long/short)
+        - Net Greeks exposure
+        - Unrealized P&L (mark-to-market)
+        - Realized P&L (closed trades)
+        
+        **Position limits:**
+        - Cash constraint (cannot trade beyond buying power)
+        - Risk score (stays 0-100, aim for green 🟢)
+        
+        **Closing positions:**
+        - Trade opposite direction (buy to close shorts, sell to close longs)
+        - Use Manual Trading tab
+        - Or wait for client requests in opposite direction
+        
+        **End-of-game considerations:**
+        - Flatten positions before time runs out
+        - Unrealized P&L becomes realized at final mark
+        - Large open positions = directional bet on final price
+        """)
+    st.markdown("---")
+
+    # Game Controls
+    st.markdown('<p class="section-header">🎮 Game Controls & Features</p>', unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
         st.markdown("""
-        **📉 Market Sell Orders**
-        - Traders want to sell
-        - Hit the highest BID
-        - You BUY inventory
-        - Position increases
+        **⏸️ Pause Button**
+        - Freeze the game temporarily
+        - You can take a moment review your positions and plan your next moves
         """)
     
     with col2:
         st.markdown("""
-        **📈 Market Buy Orders**
-        - Traders want to buy
-        - Hit the lowest ASK
-        - You SELL inventory
-        - Position decreases
+        **🔄 Reset Button**
+        - Start a new game and get a new underlying stock
         """)
     
     with col3:
         st.markdown("""
-        **💰 Your Profit**
-        - Captured spread
-        - PnL = realized gains
-        - Mark-to-market value
-        - Total performance
+        **🔃 Refresh Button**
+        - Located near progress bar
+        - Use if trades don't appear
+        - Syncs book and Greeks
         """)
-    
-    # Key Concepts
-    st.markdown('<p class="section-header">📚 Key Concepts</p>', unsafe_allow_html=True)
-    
-    with st.expander("💵 Bid-Ask Spread", expanded=False):
-        st.markdown("""
-        **The spread is your profit margin:**
-        - **Bid Price**: Price you pay to BUY
-        - **Ask Price**: Price you receive when you SELL
-        - **Spread**: Ask - Bid (your potential profit per round trip)
-        
-        **Example:**
-        - You quote Bid: 99.50, Ask: 100.50 (spread = 1.00)
-        - Someone sells to you at 99.50 (you buy)
-        - Someone buys from you at 100.50 (you sell)
-        - **Profit: 1.00 per share**
-        
-        ⚠️ **Trade-off**: Wider spreads = more profit but fewer trades
-        """)
-    
-    with st.expander("📦 Inventory Management", expanded=False):
-        st.markdown("""
-        **Your inventory is your risk exposure:**
-        - **Long Position** (+): You own assets → exposed to price drops
-        - **Short Position** (-): You owe assets → exposed to price rises
-        - **Neutral (0)**: No directional risk
-        
-        **Inventory Skewing:**
-        - If long → lower your ask to sell
-        - If short → raise your bid to buy
-        - Goal: return to neutral position
-        
-        **Risk:**
-        Large inventory × adverse price move = big losses
-        """)
-    
-    with st.expander("📊 Market Volatility", expanded=False):
-        st.markdown("""
-        **Volatility measures price uncertainty:**
-        - **Low Volatility**: Stable prices → tighter spreads possible
-        - **High Volatility**: Erratic prices → wider spreads needed
-        
-        **Adaptation Strategy:**
-        - Monitor volatility indicators
-        - Widen spread when volatility increases
-        - Tighten spread in calm markets
-        - Protect against adverse selection
-        """)
-    
-    with st.expander("💸 Profit & Loss (PnL)", expanded=False):
-        st.markdown("""
-        **Your PnL has multiple components:**
-        
-        1. **Realized PnL**: 
-           - Locked-in profits from completed round trips
-           - Cash in your pocket
-        
-        2. **Unrealized PnL**:
-           - Mark-to-market value of current inventory
-           - Inventory × (Current Price - Average Entry Price)
-        
-        3. **Total PnL**: Realized + Unrealized
-        
-        **Example:**
-        - Bought 10 shares at 100
-        - Sold 6 shares at 101 → Realized: +6
-        - Still hold 4 shares, price now 102 → Unrealized: +8
-        - Total PnL: +14
-        """)
-    
-    # Strategy Tips
-    st.markdown('<p class="section-header">💡 Strategy Tips</p>', unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("""
-        ### 🎯 For Beginners
-        
-        **Start Conservative:**
-        - Quote near the mid price
-        - Use moderate spreads (0.5 - 1.0)
-        - Keep inventory small
-        - Observe market behavior
-        
-        **Basic Rules:**
-        - ✅ Always quote bid < ask
-        - ✅ Stay near mid price
-        - ✅ Rebalance inventory often
-        - ✅ Widen spread when uncertain
-        """)
-    
-    with col2:
-        st.markdown("""
-        ### 🚀 Advanced Tactics
-        
-        **Optimize Performance:**
-        - Inventory skewing strategies
-        - Dynamic spread adjustment
-        - Volatility-based pricing
-        - Order flow prediction
-        
-        **Risk Management:**
-        - Set position limits
-        - Use stop-loss mental levels
-        - Diversify across scenarios
-        - Monitor competitor quotes
-        """)
-    
-    st.markdown('<div class="warning-box"><b>⚠️ Common Mistakes to Avoid:</b><br>• Quotes too wide → no trades<br>• Quotes too tight → losses from adverse selection<br>• Ignoring inventory → directional risk<br>• Panic adjustments → giving up edge</div>', unsafe_allow_html=True)
-    
-    # Quick Start
-    st.markdown('<p class="section-header">🚀 Quick Start Guide</p>', unsafe_allow_html=True)
-    
+
+    st.markdown("---")
+    # Scoring
+    st.markdown('<p class="section-header">🏆 Scoring & Performance</p>', unsafe_allow_html=True)
+
     st.markdown("""
-    ### Ready to trade? Follow these steps:
-    
-    1. **🎯 Choose your mode** - Start with Practice Mode if you're new
-    2. **⚙️ Configure settings** - Set volatility, game duration, and difficulty
-    3. **📊 Review the dashboard** - Familiarize yourself with the interface
-    4. **💰 Set your first quotes** - Start conservative: bid/ask near mid price
-    5. **👀 Monitor trades** - Watch your PnL and inventory
-    6. **🔄 Adapt strategy** - Adjust quotes based on performance
-    7. **🏆 Finish strong** - Close positions and maximize final PnL
+    Your performance is evaluated on:
+
+    | Metric | Description | Target |
+    |--------|-------------|--------|
+    | **Total P&L** | Final profit/loss | Maximize |
+    | **Risk Score** | Greeks-based risk (0-100) | Keep in green 🟢 |
+    | **Trade Count** | Quotes accepted by clients | Balance quantity vs. quality |
+
+    **🥇 Winning Profile:**
+    - High P&L with controlled risk
+    - Disciplined Delta hedging
+    - Smart volatility estimation
     """)
-    
-    st.markdown('<div class="info-box"><b>💡 Pro Tip:</b> Your first few games are for learning. Focus on understanding the mechanics before optimizing for profit.</div>', unsafe_allow_html=True)
-    
+
     # Footer with start button
     st.markdown("---")
     col1, col2, col3 = st.columns([1, 1, 1])
@@ -244,5 +434,5 @@ def show_rules_page():
         if st.button("🎮 START TRADING", type="primary", use_container_width=True, key="start_game_btn"):
             st.session_state.show_rules = False
             st.rerun()
-    
-    st.markdown("<p style='text-align: center; color: #666; margin-top: 20px;'>Good luck, and may the spreads be in your favor! 📈</p>", unsafe_allow_html=True)
+
+    st.markdown("<p style='text-align: center; color: #666; margin-top: 20px;'>Good luck, and may the Greeks be in your favor! 🎯</p>", unsafe_allow_html=True)
