@@ -23,6 +23,59 @@ def remove_st_default() -> None:
         </style>
     """, unsafe_allow_html=True)
 
+def rules_page_styling() -> None:
+    """CSS styling spécifique pour la page de règles"""
+    st.markdown("""
+        <style>
+        .big-title {
+            font-size: 48px;
+            font-weight: bold;
+            text-align: center;
+            color: #ff4444;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            font-size: 20px;
+            text-align: center;
+            color: #aaaaaa;
+            margin-bottom: 40px;
+        }
+        .section-header {
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffffff;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 3px solid #ff4444;
+            padding-bottom: 5px;
+        }
+        .info-box {
+            background-color: #1e3a5f;
+            border-left: 5px solid #4a90e2;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            color: #ffffff;
+        }
+        .warning-box {
+            background-color: #3d3316;
+            border-left: 5px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            color: #ffffff;
+        }
+        .success-box {
+            background-color: #0e3a1f;
+            border-left: 5px solid #00ff88;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            color: #ffffff;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
 def global_theme() -> None:
     # Custom CSS for dark theme
     st.markdown("""
