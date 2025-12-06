@@ -60,29 +60,63 @@
 
 ```
 src/
-  trading_game/
-    app/
-      webapp.py            # Web interface
-
-    config/
-      __init__.py          # Configuration package initializer
-      investor_pool.py     # Definitions for investors profiles
-      settings.py          # Global configuration and constants
-      stock_pool.py        # Available underlyings (stocks...)
-      strat_pool.py        # Predefined strategy generator (call spreads, straddles, butterflies...)
-
-    core/
-      __init__.py          # Core package initializer
-      book.py              # Portfolio object, P&L and trade tracking
-      manual_trading.py    # Trading engine: order classes (market, limit), execution logic, and strategy handling
-      market.py            # Market model: Stock class with stochastic price evolution
-      option_pricer.py     # Option pricing models (e.g., Black-Scholes, Greeks)
-      street.py            # Market interaction engine: investor profiles, quote requests, bid/ask simulation, chat-like flow
-
-    utils/
-      __init__.py          # Utility helpers (I/O, math, visualization)
-
-.gitignore                 
+└── trading_game/
+    ├── app/                               # Streamlit web interface
+    │   ├── webapp.py                      # Main entry point
+    │   │
+    │   ├── components/                    # Reusable UI components
+    │   │   ├── client_chat.py             # Chat interface for client interactions
+    │   │   ├── graphs.py                  # Market & P&L visualizations
+    │   │   ├── metrics.py                 # P&L and risk KPIs
+    │   │   ├── news_alert.py              # Market news generator
+    │   │   ├── option_param_inputs.py     # Inputs for option pricing parameters
+    │   │   ├── pricer_tabs.py             # Tabs for pricing tools
+    │   │   ├── risk_bar.py                # Real-time risk exposure bar
+    │   │   ├── sidebar_header.py          # Sidebar layout (logo, score…)
+    │   │   └── trading_tabs.py            # Tabs for manual trading & options trading
+    │   │
+    │   ├── images/                        # Static assets (logos…)
+    │   │   └── logo_vf.jpeg
+    │   │
+    │   ├── layouts/                       # High-level pages / screens
+    │   │   ├── client_requests.py         # Client request generation panel
+    │   │   ├── controls.py                # Global app controls
+    │   │   ├── current_positions.py       # Current positions & P&L dashboard
+    │   │   ├── main_layout.py             # Root layout orchestrating all views
+    │   │   ├── market_overview.py         # Market data, shocks, asset info
+    │   │   ├── pricer_tool.py             # Option pricing page
+    │   │   ├── trading_delta.py           # Delta hedging interface
+    │   │   └── trading_options.py         # Options trading interface
+    │   │
+    │   └── utils/                         # App-specific utilities
+    │       ├── client_request_manager.py  # Client request logic (stateful)
+    │       ├── functions.py               # Helper functions for UI
+    │       ├── state_manager.py           # Streamlit session state manager
+    │       └── styling.py                 # CSS & visual formatting
+    │
+    ├── config/                            # Static configuration & predefined pools
+    │   ├── investor_pool.py               # Investor profiles and behaviours
+    │   ├── maturity_config.py             # Maturity presets for options
+    │   ├── request_pool.py                # Client request templates
+    │   ├── settings.py                    # Global settings and constants
+    │   ├── shock_pool.py                  # Market shock definitions
+    │   ├── stock_pool.py                  # Underlying assets (stocks…)
+    │   └── strat_pool.py                  # Predefined trading strategies
+    │
+    ├── core/                              # Core business logic (model-agnostic)
+    │   ├── book.py                        # Portfolio object: trades, positions, P&L
+    │   ├── manual_trading.py              # Trade execution engine (market/limit)
+    │   ├── option_pricer.py               # Pricing models & Greeks (Black–Scholes…)
+    │   └── quote_request.py               # Quote request engine (bid/ask simulation)
+    │
+    ├── models/                            # Domain models
+    │   ├── shock.py                       # Shock structure (vol spikes, gaps…)
+    │   ├── stock.py                       # Stock data model
+    │   └── street.py                      # Market microstructure abstractions
+    │
+    └── utils/                             # Global utilities (non-UI)
+        └── app_utils.py                   # Logging, seeds, helpers, formatting
+                
 ```
 
 **Design philosophy:**
@@ -141,42 +175,83 @@ ___
 ## Project Structure
 
 ```text
-.
-├─ .idea/                     # IDE configuration files (PyCharm / IntelliJ)
-│  ├─ inspectionProfiles/
-│  ├─ misc.xml
-│  ├─ modules.xml
-│  ├─ trading_game_project.iml
-│  └─ vcs.xml
+
+TRADING_GAME_PROJECT/
+├── __pycache__/                     # Python bytecode cache (can be ignored)
+├── .gitignore                       # Git ignore rules
+├── misc.xml                         # IDE (PyCharm / IntelliJ) project config
+├── modules.xml                      # IDE module configuration
+├── MypyPlugin.xml                   # IDE mypy plugin configuration
+├── trading_game_project.iml         # IDE project file
+├── vcs.xml                          # IDE VCS configuration
 │
-├─ src/
-│  └─ trading_game/
-│     ├─ app/                 # Streamlit or FastAPI web interface
-│     │   └─ webapp.py
-│     │
-│     ├─ config/              # Settings, investor pools, stock and strategy definitions
-│     │   ├─ __init__.py
-│     │   ├─ investor_pool.py
-│     │   ├─ settings.py
-│     │   ├─ stock_pool.py
-│     │   └─ strat_pool.py
-│     │
-│     ├─ core/                # Core logic: trading, pricing, market simulation, orchestration
-│     │   ├─ __init__.py
-│     │   ├─ book.py
-│     │   ├─ manual_trading.py
-│     │   ├─ market.py
-│     │   ├─ option_pricer.py
-│     │   └─ street.py
-│     │
-│     └─ utils/               # Utility functions and helpers
-│         └─ __init__.py
-│
-├─ .gitignore                 # Git ignore rules
-├─ environment.yml            # Conda or micromamba environment definition
-├─ poetry.lock                # Poetry dependency lock file
-├─ pyproject.toml             # Project configuration and build system
-└─ README.md                  # Documentation
+└── src/
+    └── trading_game/
+        ├── __pycache__/             # Package cache (ignored by Git)
+        │
+        ├── app/                     # Streamlit web interface
+        │   ├── webapp.py            # Main application entry point
+        │   │
+        │   ├── components/          # Reusable UI components
+        │   │   ├── __init__.py
+        │   │   ├── client_chat.py
+        │   │   ├── graphs.py
+        │   │   ├── metrics.py
+        │   │   ├── news_alert.py
+        │   │   ├── option_param_inputs.py
+        │   │   ├── pricer_tabs.py
+        │   │   ├── risk_bar.py
+        │   │   ├── sidebar_header.py
+        │   │   └── trading_tabs.py
+        │   │
+        │   ├── images/              # Static assets (logos…)
+        │   │   └── logo_vf.jpeg
+        │   │
+        │   ├── layouts/             # High-level pages / screens
+        │   │   ├── __init__.py
+        │   │   ├── client_requests.py
+        │   │   ├── controls.py
+        │   │   ├── current_positions.py
+        │   │   ├── main_layout.py
+        │   │   ├── market_overview.py
+        │   │   ├── pricer_tool.py
+        │   │   ├── trading_delta.py
+        │   │   └── trading_options.py
+        │   │
+        │   └── utils/               # UI & session management helpers
+        │       ├── __init__.py
+        │       ├── client_request_manager.py
+        │       ├── functions.py
+        │       ├── state_manager.py
+        │       └── styling.py
+        │
+        ├── config/                  # Static configuration & pools
+        │   ├── __init__.py
+        │   ├── investor_pool.py
+        │   ├── maturity_config.py
+        │   ├── request_pool.py
+        │   ├── settings.py
+        │   ├── shock_pool.py
+        │   ├── stock_pool.py
+        │   └── strat_pool.py
+        │
+        ├── core/                    # Core trading & pricing logic
+        │   ├── __init__.py
+        │   ├── book.py
+        │   ├── manual_trading.py
+        │   ├── option_pricer.py
+        │   └── quote_request.py
+        │
+        ├── models/                  # Domain models
+        │   ├── __init__.py
+        │   ├── shock.py
+        │   ├── stock.py
+        │   └── street.py
+        │
+        └── utils/                   # Package-level utilities
+            ├── __init__.py
+            └── app_utils.py
+
 ```
 ---
 
