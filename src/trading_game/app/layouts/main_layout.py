@@ -26,6 +26,7 @@ def render_main_layout() -> None:
     total_portfolio_value = book.compute_book_value(spot_ref, vol_ref)
     portfolio_pnl = book.compute_book_pnl(spot_ref, vol_ref)
     portfolio_greeks = book.compute_greeks(spot_ref, vol_ref)
+    portfolio_greeks_cash = book.compute_greeks_cash(spot_ref,vol_ref)
     score = 0  # calculate_risk_score(book) # implement scoring method
 
     # BAR AND HEADER
@@ -38,7 +39,7 @@ def render_main_layout() -> None:
     # ============================================================================
     # MARKET OVERVIEW
     # ============================================================================
-    render_market_overview(portfolio_pnl, portfolio_greeks)
+    render_market_overview(portfolio_pnl, portfolio_greeks,portfolio_greeks_cash)
 
     # ============================================================================
     # POSITIONS TABLE
@@ -48,7 +49,7 @@ def render_main_layout() -> None:
     # ============================================================================
     # DELTA
     # ============================================================================
-    render_trading_delta(portfolio_greeks, cash_available)
+    render_trading_delta(portfolio_greeks,portfolio_greeks_cash, cash_available)
 
     # ============================================================================
     # CLIENT REQUESTS

@@ -268,6 +268,35 @@ class Book(BaseModel):
 
         return total_greeks
 
+    def compute_greeks_cash(self, spot_ref: float, volatility: float) -> Dict[str, float]:
+        """
+        Calculate portfolio Greeks expressed in cash terms.
+        Conventions used here:
+        - delta_cash  = Delta * S
+        - gamma_cash  = 0.5 * Gamma * S^2      (approx cash P&L for a 1-unit move in S)
+        - vega_cash   = Vega * 0.01           (cash P&L for a 1 vol point = 1% change)
+        - theta_cash  = Theta                 (already in price units per time step)
+        - rho_cash    = Rho * 0.0001          (cash P&L for a 1bp move in rates)
+        """
+
+        greeks = self.compute_greeks(spot_ref, volatility)
+
+        delta = greeks["delta"]
+        gamma = greeks["gamma"]
+        vega = greeks["vega"]
+        theta = greeks["theta"]
+        rho = greeks["rho"]
+
+        cash_greeks = {
+            "delta_cash": delta * spot_ref,
+            "gamma_cash": 0.5 * gamma * (spot_ref ** 2),
+            "vega_cash": vega * 0.01,        # for a 1 vol point (1%) move
+            "theta_cash": theta,             
+            "rho_cash": rho * 0.0001         # for a 1bp move in rates
+        }
+
+        return cash_greeks
+
     
     def get_positions_summary(self, spot_ref: float, volatility: float) -> Dict:
         """Get a summary of all positions in the book (strategies + stocks)."""

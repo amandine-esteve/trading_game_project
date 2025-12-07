@@ -7,7 +7,7 @@ from trading_game.app.utils.styling import get_risk_color
 
 
 
-def render_market_overview(pnl, portfolio_greeks) -> None :
+def render_market_overview(pnl, portfolio_greeks, portfolio_greeks_cash) -> None :
     st.markdown('<a id="market-overview"></a>', unsafe_allow_html=True)
     st.header("📊 Market Overview")
 
@@ -42,18 +42,18 @@ def render_market_overview(pnl, portfolio_greeks) -> None :
         theta_color = get_risk_color(portfolio_greeks['theta'], [50, 150])
 
         st.markdown(
-            f"**Delta:** <span style='color:{delta_color}; font-size:24px'>{portfolio_greeks['delta']:.0f}</span>",
+            f"**Delta $:** <span style='color:{delta_color}; font-size:24px'>{portfolio_greeks_cash['delta_cash']:.0f}</span>",
             unsafe_allow_html=True)
         render_risk_bar(portfolio_greeks['delta'], 2000)
         st.markdown(
-            f"**Gamma:** <span style='color:{gamma_color}; font-size:24px'>{portfolio_greeks['gamma']:.2f}</span>",
+            f"**Gamma $:** <span style='color:{gamma_color}; font-size:24px'>{portfolio_greeks_cash['gamma_cash']:.2f}</span>",
             unsafe_allow_html=True)
         render_risk_bar(portfolio_greeks['gamma'], 200)
-        st.markdown(f"**Vega:** <span style='color:{vega_color}; font-size:24px'>{portfolio_greeks['vega']:.0f}</span>",
+        st.markdown(f"**Vega $:** <span style='color:{vega_color}; font-size:24px'>{portfolio_greeks_cash['vega_cash']:.0f}</span>",
                     unsafe_allow_html=True)
         render_risk_bar(portfolio_greeks['vega'], 5000)
         st.markdown(
-            f"**Theta:** <span style='color:{theta_color}; font-size:24px'>{portfolio_greeks['theta']:.2f}</span>",
+            f"**Theta $:** <span style='color:{theta_color}; font-size:24px'>{portfolio_greeks_cash['theta_cash']:.2f}</span>",
             unsafe_allow_html=True)
         render_risk_bar(portfolio_greeks['theta'], 150)
 
