@@ -290,7 +290,7 @@ class Book(BaseModel):
         cash_greeks = {
             "delta_cash": delta * spot_ref,
             "gamma_cash": 0.5 * gamma * (spot_ref ** 2),
-            "vega_cash": vega * 0.01,        # for a 1 vol point (1%) move
+            "vega_cash": vega,        # for a 1 vol point (1%) move
             "theta_cash": theta,             
             "rho_cash": rho * 0.0001         # for a 1bp move in rates
         }
