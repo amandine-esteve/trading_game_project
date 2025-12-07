@@ -17,12 +17,12 @@ st.set_page_config(
 
 
 def main() -> None:
-    # Initialize session_state for naviagtion
-    if 'show_rules' not in st.session_state:
-        st.session_state.show_rules = True  
-    
     remove_st_default()
     global_theme()
+
+    # Initialize session_state for navigation
+    if 'show_rules' not in st.session_state:
+        st.session_state.show_rules = True
     
     if st.session_state.show_rules:
         rules_page_styling()  # CSS spécifique to the rules
