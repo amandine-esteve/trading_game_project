@@ -2,7 +2,7 @@ import streamlit as st
 from pathlib import Path
 import pandas as pd
 
-def show_rules_page():
+def show_rules_page() -> None:
     """Display the rules and tutorial page for the options market making game"""
    
     col1, col2 = st.columns([0.5, 5])
@@ -23,10 +23,10 @@ def show_rules_page():
     ### 👋 Welcome to Flow Master!
 
     You are an **options market maker** at a trading desk. Your role is to provide liquidity to the market 
-    by quoting **bid-ask prices** on vanilla options and strategies to a diverse panel of clients: sucha as hedge funds, 
+    by quoting **bid-ask prices** on vanilla options and strategies to a diverse panel of clients: such as hedge funds, 
     asset managers, investment banks...
 
-    Your mission: **maximize your P&L** while managing your **Greeks exposure** and staying within risk limits.
+    Your mission: **maximize your P&L** while managing your **Greeks exposure**.
 
     Are you ready to compete in the options trading arena?
     """)
@@ -44,7 +44,7 @@ def show_rules_page():
     - **Estimating volatility correctly** to avoid being arbitraged
     """)
     
-    st.markdown('<div class="success-box"><b>🏆 Win Condition:</b> Achieve the highest P&L at game end while keeping your risk score under control.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="success-box"><b>🏆 Win Condition:</b> Achieve the highest P&L at game end while keeping your Greeks under control.</div>', unsafe_allow_html=True)
     st.markdown("---")
 
     # How to Play - Step by Step
@@ -118,7 +118,7 @@ def show_rules_page():
         - The position is added to your **book**
         - Your **P&L** updates based on the spread captured
         - Your **Greeks** (Delta, Gamma, Vega, Theta) update
-        - Your **cash** and **portfolio value** adjust and your **risk score** recalculates
+        - Your **cash** and **portfolio value** adjust
         """)
 
     st.markdown("---")
@@ -128,7 +128,7 @@ def show_rules_page():
 
     with col1:
         st.markdown("""
-        ### 🛡️ Step 5: Manage Your Risk
+        ### 🛡️ Step 5: Manage Your Risks
 
         Monitor your exposure in the **"Risk Dashboard"**:
         """)
@@ -160,9 +160,9 @@ def show_rules_page():
 
     with col2:
         st.markdown("""
-        ### 📈 Step 6: Manual Trading (Optional)
+        ### 📈 Step 6: Option trading
         
-        Access the **"Manual Trading"** tab to:
+        Access the **"Trading Options"** tab to:
         - Execute trade vanilla options (Calls/Puts) or option strategies (Straddles, Strangles, ...)
         - Rebalance your Greeks proactively
         - Take directional or volatility views
@@ -193,7 +193,6 @@ def show_rules_page():
         - **P&L**: Your total profit/loss
         - **Portfolio Value**: Cash + positions value
         - **Cash**: Available buying power
-        - **Risk Score**: 0-100 (🟢 Low, 🟡 Medium, 🔴 High)
         
         **Live Charts:**
         - **📈 Price Chart**: Real-time stock movement
@@ -229,7 +228,7 @@ def show_rules_page():
         1. Quote close to fair value (pricer price)
         2. Use moderate spreads (10-15% of option value)
         3. Delta hedge after every trade
-        4. Monitor risk score constantly
+        4. Monitor risk Greeks
         """)
 
     with col2:
@@ -368,11 +367,10 @@ def show_rules_page():
         
         **Position limits:**
         - Cash constraint (cannot trade beyond buying power)
-        - Risk score (stays 0-100, aim for green 🟢)
         
         **Closing positions:**
         - Trade opposite direction (buy to close shorts, sell to close longs)
-        - Use Manual Trading tab
+        - Use Trading Options tab
         - Or wait for client requests in opposite direction
         
         **End-of-game considerations:**
@@ -418,7 +416,6 @@ def show_rules_page():
     | Metric | Description | Target |
     |--------|-------------|--------|
     | **Total P&L** | Final profit/loss | Maximize |
-    | **Risk Score** | Greeks-based risk (0-100) | Keep in green 🟢 |
     | **Trade Count** | Quotes accepted by clients | Balance quantity vs. quality |
 
     **🥇 Winning Profile:**

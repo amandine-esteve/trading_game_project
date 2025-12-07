@@ -18,7 +18,7 @@ def render_main_layout() -> None:
     remove_st_default()
     global_theme()
 
-    # First computations -> check recomputation
+    # First computations
     spot_ref = st.session_state.stock.last_price
     vol_ref = st.session_state.stock.last_vol
     book = st.session_state.book
@@ -27,29 +27,23 @@ def render_main_layout() -> None:
     portfolio_pnl = book.compute_book_pnl(spot_ref, vol_ref)
     portfolio_greeks = book.compute_greeks(spot_ref, vol_ref)
     portfolio_greeks_cash = book.compute_greeks_cash(spot_ref,vol_ref)
-    score = 0  # calculate_risk_score(book) # implement scoring method
 
     # BAR AND HEADER
     render_side_bar()
-    render_header(portfolio_pnl, score)
+    render_header(portfolio_pnl)
 
     # METRICS
-    render_top_metrics(total_portfolio_value, portfolio_pnl, score, cash_available)
+    render_top_metrics(total_portfolio_value, portfolio_pnl, cash_available)
 
     # ============================================================================
     # MARKET OVERVIEW
     # ============================================================================
-    render_market_overview(portfolio_pnl, portfolio_greeks,portfolio_greeks_cash)
+    render_market_overview(portfolio_pnl, portfolio_greeks, portfolio_greeks_cash)
 
     # ============================================================================
     # POSITIONS TABLE
     # ============================================================================
     render_current_positions()
-
-    # ============================================================================
-    # DELTA
-    # ============================================================================
-    render_trading_delta(portfolio_greeks,portfolio_greeks_cash, cash_available)
 
     # ============================================================================
     # CLIENT REQUESTS
@@ -65,6 +59,11 @@ def render_main_layout() -> None:
     # MANUAL TRADING -> refactor
     # ============================================================================
     render_trading_options()
+
+    # ============================================================================
+    # DELTA
+    # ============================================================================
+    render_trading_delta(portfolio_greeks, cash_available)
 
     # ============================================================================
     # CONTROLS
