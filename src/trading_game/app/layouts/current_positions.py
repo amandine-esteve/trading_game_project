@@ -38,6 +38,10 @@ def render_current_positions() -> None:
                 # P&L de la stratégie depuis le book
                 pnl = book.strategy_pnl(strat_key, spot, vol)
 
+                # Cash greeks
+                delta_cash = greeks["delta"] * spot * quantity
+                gamma_cash = 0.5 * greeks["gamma"] * (spot ** 2) * quantity
+
                 book_for_dataframe.append({
                     'ID': strat_key,
                     'Type': strategy.name.upper(),
@@ -46,8 +50,8 @@ def render_current_positions() -> None:
                     'Entry': f"${entry_price * quantity:.2f}",
                     'Current': f"${current_price:.2f}",
                     'P&L': f"${pnl:.0f}",
-                    'Delta': f"{greeks['delta'] * quantity:.0f}",
-                    'Gamma': f"{greeks['gamma'] * quantity:.2f}",
+                    'Delta Cash': f"{delta_cash:.0f}",
+                    'Gamma Cash': f"{gamma_cash:.2f}",
                     'Expiry': ", ".join((datetime.now() + timedelta(days=int(T * BASE))).strftime('%Y-%m-%d') for T in maturities)
                 })
 
