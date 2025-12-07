@@ -63,7 +63,7 @@ def render_main_layout() -> None:
     # ============================================================================
     # DELTA
     # ============================================================================
-    render_trading_delta(portfolio_greeks, cash_available)
+    render_trading_delta(portfolio_greeks, portfolio_greeks_cash, cash_available)
 
     # ============================================================================
     # CONTROLS
