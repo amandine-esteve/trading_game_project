@@ -41,7 +41,7 @@ def show_rules_page() -> None:
     - **Capturing the bid-ask spread** on every trade
     - **Managing your Greeks** (Delta, Gamma, Vega, Theta) to control risk
     - **Hedging your Delta** using the underlying stock
-    - **Estimating volatility correctly** to avoid being arbitraged
+    - **Adjusting your volatility correctly** to avoid being arbitraged
     """)
     
     st.markdown('<div class="success-box"><b>🏆 Win Condition:</b> Achieve the highest P&L at game end while keeping your Greeks under control.</div>', unsafe_allow_html=True)
@@ -72,19 +72,28 @@ def show_rules_page() -> None:
         ### 🧮 Step 2: Price the Option Using the Pricer
         
         Use the **"Options Pricer Tool"** to calculate the fair value:
-        
+
         1. **Select the option type** (Call/Put or Strategy)
         2. **Match the maturity** from the client request (1M, 3M, ...) and the **strike** provided.
-        3. **🔑 Choose the volatility (σ)** — this is YOUR EDGE:
-        - Too high → you'll overprice and lose business
-        - Too low → you'll underprice and get arbitraged
+        3. **🔑 Adjust the volatility (σ) if you want**. By default the pricer gives you the stock's **implied volatility**, 
+        but you can modify it to express your pricing view:
+        - Higher vol → higher option price
+        - Lower vol → lower option price
         4. **Press Enter** to compute the price and Greeks
+
         The pricer will display:
-        - The **Option (or strategy) fair value** and the corresponding **Greeks**: Delta, Gamma, ...
+        - The **Option (or strategy) fair value**
+        - The corresponding **Greeks**: Delta, Gamma, …
         """)
 
-    st.markdown('<div class="warning-box"><b>⚠️ Critical:</b> Volatility is the ONLY parameter you choose to get the option\'s price. Estimating it correctly is the key to profitability!</div>', unsafe_allow_html=True)
-
+    st.markdown(
+        '<div class="warning-box">'
+        '<b>⚠️ Critical:</b> The pricer gives you the stock’s implied volatility by default, '
+        'but adjusting it is a lever you control to influence your pricing and edges.'
+        '</div>',
+        unsafe_allow_html=True
+    )
+    
     st.markdown("---")
 
     # Steps 3 & 4
@@ -247,7 +256,7 @@ def show_rules_page() -> None:
         - 📊 Don't let Gamma explode
         """)
     
-    st.markdown('<div class="warning-box"><b>⚠️ Common Mistakes to Avoid:</b><br>• Ignoring Delta → huge directional losses<br>• Mispricing volatility → arbitraged by clients<br></div>', unsafe_allow_html=True)
+    st.markdown('<div class="warning-box"><b>⚠️ Common Mistakes to Avoid:</b><br>• Ignoring Delta → huge directional losses<br>• Wrong adjustment of volatility → arbitraged by clients<br></div>', unsafe_allow_html=True)
     
     st.markdown("---")
     # Key Concepts
@@ -335,8 +344,7 @@ def show_rules_page() -> None:
         
         **Your edge as a market maker:**
         - Clients give you Strike + Maturity
-        - **YOU choose the volatility** to price with
-        - If you estimate vol better than clients → profit
+        - **YOU decide if you want to adjust the volatility** to price with
         - If you misestimate → losses
         
         **Volatility strategies:**
@@ -362,7 +370,6 @@ def show_rules_page() -> None:
         **Your book tracks:**
         - All open positions (long/short)
         - Net Greeks exposure
-        - Unrealized P&L (mark-to-market)
         - Realized P&L (closed trades)
         
         **Position limits:**
@@ -375,7 +382,6 @@ def show_rules_page() -> None:
         
         **End-of-game considerations:**
         - Flatten positions before time runs out
-        - Unrealized P&L becomes realized at final mark
         - Large open positions = directional bet on final price
         """)
     st.markdown("---")
@@ -407,22 +413,7 @@ def show_rules_page() -> None:
         """)
 
     st.markdown("---")
-    # Scoring
-    st.markdown('<p class="section-header">🏆 Scoring & Performance</p>', unsafe_allow_html=True)
-
-    st.markdown("""
-    Your performance is evaluated on:
-
-    | Metric | Description | Target |
-    |--------|-------------|--------|
-    | **Total P&L** | Final profit/loss | Maximize |
-    | **Trade Count** | Quotes accepted by clients | Balance quantity vs. quality |
-
-    **🥇 Winning Profile:**
-    - High P&L with controlled risk
-    - Disciplined Delta hedging
-    - Smart volatility estimation
-    """)
+   
 
     # Footer with start button
     st.markdown("---")
