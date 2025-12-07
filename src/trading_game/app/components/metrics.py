@@ -3,7 +3,7 @@ from trading_game.config.settings import STARTING_CASH
 
 
 
-def render_top_metrics(total_portfolio_value, pnl, risk_score, cash_available) -> None:
+def render_top_metrics(total_portfolio_value, pnl, cash_available) -> None:
     col1, col2, col3, col4, col5 = st.columns(5)
     pnl_pct = (pnl / STARTING_CASH) * 100
 
@@ -26,9 +26,5 @@ def render_top_metrics(total_portfolio_value, pnl, risk_score, cash_available) -
 
     with col4:
         st.metric("Cash", f"${cash_available:,.0f}")
-
-    with col5:
-        score_color = "🟢" if risk_score > 80 else "🟡" if risk_score > 40 else "🔴"
-        st.metric("Risk Score", f"{score_color} {risk_score:.0f}/100")
 
     st.divider()

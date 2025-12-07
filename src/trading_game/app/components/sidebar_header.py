@@ -28,7 +28,7 @@ def render_side_bar() -> None:
         st.caption(f"🎮 Status: {'PAUSED' if st.session_state.trading_paused else 'ACTIVE'}")
         st.caption(f"🏁 Game: {'OVER' if st.session_state.game_over else 'IN PROGRESS'}")
 
-def render_header(portfolio_pnl: float, score: float) -> None:
+def render_header(portfolio_pnl: float) -> None:
     
     col1, col2 = st.columns([0.5, 5])
 
@@ -44,13 +44,12 @@ def render_header(portfolio_pnl: float, score: float) -> None:
 
     if st.session_state.game_over:
         final_pnl = portfolio_pnl
-        final_score = score
 
         if final_pnl > 0:
-            st.success(f"🎉 GAME OVER - YOU WIN! Final P&L: ${final_pnl:,.0f} | Score: {final_score:.0f}/100")
+            st.success(f"🎉 GAME OVER - YOU WIN! Final P&L: ${final_pnl:,.0f}")
         else:
             st.error(
-                f"💀 GAME OVER - Better luck next time! Final P&L: ${final_pnl:,.0f} | Score: {final_score:.0f}/100")
+                f"💀 GAME OVER - Better luck next time! Final P&L: ${final_pnl:,.0f}")
         st.divider()
 
     progress_pct = st.session_state.tick_count / st.session_state.game_duration
