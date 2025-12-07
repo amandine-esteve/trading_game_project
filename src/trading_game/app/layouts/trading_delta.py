@@ -47,7 +47,6 @@ def render_trading_delta(portfolio_greeks, portfolio_greeks_cash, cash_available
                     )
 
                 book.cash -= (stock_qty * stock.last_price + transaction_cost)
-                st.success(f"Hedge executed! New position: {book.stocks[stock.ticker][1]:+.0f}")
                 executed = True
 
     if executed:
