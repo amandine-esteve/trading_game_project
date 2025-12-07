@@ -18,8 +18,8 @@ def render_side_bar() -> None:
         <a href="#positions" class="nav-link">📈 Positions</a>
         <a href="#hedging" class="nav-link">🛡️ Delta Hedging</a>
         <a href="#clients" class="nav-link">📞 Client Requests</a>
-        <a href="#manual-trading" class="nav-link">💼 Manual Trading</a>
         <a href="#pricer" class="nav-link">🧮 Option Pricer</a>
+        <a href="#manual-trading" class="nav-link">💼 Manual Trading</a>
         """, unsafe_allow_html=True)
 
         st.markdown("---")
