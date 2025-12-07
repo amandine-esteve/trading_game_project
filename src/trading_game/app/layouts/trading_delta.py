@@ -4,7 +4,7 @@ from trading_game.config.settings import TRANSACTION_COST
 
 
 
-def render_trading_delta(portfolio_greeks, cash_available) -> None:
+def render_trading_delta(portfolio_greeks, portfolio_greeks_cash, cash_available) -> None:
 
     stock = st.session_state.stock
     book = st.session_state.book
@@ -15,7 +15,7 @@ def render_trading_delta(portfolio_greeks, cash_available) -> None:
     hedge_col1, hedge_col2, hedge_col3 = st.columns([2, 2, 1])
 
     with hedge_col1:
-        st.markdown(f"**Current Portfolio Delta:** {portfolio_greeks['delta']:.0f}")
+        st.markdown(f"**Current Portfolio Delta $:** {portfolio_greeks_cash['delta_cash']:.0f}")
         recommended_hedge = -portfolio_greeks['delta']
         st.markdown(f"**Recommended Hedge:** {int(recommended_hedge):+.0f} shares")
 

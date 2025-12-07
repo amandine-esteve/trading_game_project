@@ -26,6 +26,7 @@ def render_main_layout() -> None:
     total_portfolio_value = book.compute_book_value(spot_ref, vol_ref)
     portfolio_pnl = book.compute_book_pnl(spot_ref, vol_ref)
     portfolio_greeks = book.compute_greeks(spot_ref, vol_ref)
+    portfolio_greeks_cash = book.compute_greeks_cash(spot_ref,vol_ref)
 
     # BAR AND HEADER
     render_side_bar()
@@ -37,7 +38,7 @@ def render_main_layout() -> None:
     # ============================================================================
     # MARKET OVERVIEW
     # ============================================================================
-    render_market_overview(portfolio_pnl, portfolio_greeks)
+    render_market_overview(portfolio_pnl, portfolio_greeks, portfolio_greeks_cash)
 
     # ============================================================================
     # POSITIONS TABLE

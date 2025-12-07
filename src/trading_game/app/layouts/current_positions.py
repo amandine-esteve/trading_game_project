@@ -50,8 +50,8 @@ def render_current_positions() -> None:
                     'Entry': f"${entry_price * quantity:.2f}",
                     'Current': f"${current_price:.2f}",
                     'P&L': f"${pnl:.0f}",
-                    'Delta Cash': f"{delta_cash:.0f}",
-                    'Gamma Cash': f"{gamma_cash:.2f}",
+                    'Delta $': f"{delta_cash:.0f}",
+                    'Gamma $': f"{gamma_cash:.2f}",
                     'Expiry': ", ".join((datetime.now() + timedelta(days=int(T * BASE))).strftime('%Y-%m-%d') for T in maturities)
                 })
 
